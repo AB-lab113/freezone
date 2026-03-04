@@ -60,6 +60,8 @@ function App() {
   });
 
   const [account, setAccount] = useState(null);
+  const [estAbonne, setEstAbonne] = useState(false);
+  const [loadingAbo, setLoadingAbo] = useState(false);
   const [page, setPage] = useState("home");
   const [forums, setForums] = useState(() => {
     const saved = localStorage.getItem("freezone_forums");
@@ -83,11 +85,39 @@ function App() {
     document.body.className = dark ? "dark" : "light";
   }, [dark]);
 
+  const verifierAbonnement = async (addr, prov) => {
+    try {
+      const provider = prov || new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
+      const abonne = await contract.estAbonne(addr);
+      setEstAbonne(abonne);
+    } catch (e) { console.error("Erreur vérif abonnement:", e); }
+  };
+
   const connectWallet = async () => {
     if (!window.ethereum?.isMetaMask) { alert("Installez MetaMask !"); return; }
     const provider = new ethers.BrowserProvider(window.ethereum);
     const accounts = await provider.send("eth_requestAccounts", []);
     setAccount(accounts[0]);
+    await verifierAbonnement(accounts[0], provider);
+  };
+
+  const sAbonner = async () => {
+    if (!account) { alert("Connectez MetaMask !"); return; }
+    try {
+      setLoadingAbo(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer);
+      const tx = await contract.sAbonner({ value: ethers.parseEther("0.01") });
+      await tx.wait();
+      setEstAbonne(true);
+      alert("✅ Abonnement activé pour 30 jours !");
+    } catch (e) {
+      alert("❌ Erreur : " + e.message);
+    } finally {
+      setLoadingAbo(false);
+    }
   };
 
   const openForum = (forum) => { setActiveForum(forum); setPage("forum"); };
@@ -98,6 +128,7 @@ function App() {
 
   const creerSalon = () => {
     if (!account) { alert("Connectez MetaMask pour créer un salon !"); return; }
+    if (!estAbonne) { alert("⚠️ Vous devez être abonné pour créer un salon !"); return; }
     if (!newSalon.name.trim()) { alert("Donnez un nom au salon !"); return; }
     const salon = {
       id: newSalon.name.toLowerCase().replace(/\s+/g, "-"),
@@ -112,6 +143,7 @@ function App() {
 
   const creerTopic = () => {
     if (!account) { alert("Connectez MetaMask pour poster !"); return; }
+    if (!estAbonne) { alert("⚠️ Vous devez être abonné pour poster !"); return; }
     if (!newTopic.title.trim()) { alert("Donnez un titre au topic !"); return; }
     const topic = {
       id: Date.now(), title: newTopic.title, content: newTopic.content,
@@ -129,6 +161,7 @@ function App() {
 
   const posterReponse = () => {
     if (!account) { alert("Connectez MetaMask pour répondre !"); return; }
+    if (!estAbonne) { alert("⚠️ Vous devez être abonné pour répondre !"); return; }
     if (!newReply.trim()) { alert("Écrivez un message !"); return; }
     const reply = {
       id: Date.now(), author: shortAddr(account), content: newReply,
@@ -157,19 +190,35 @@ function App() {
 
   return (
     <div>
+      {/* HEADER */}
       <header className="header">
         <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
         <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
           {account ? (
-            <span className="wallet-addr">🦊 {shortAddr(account)}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="wallet-addr">🦊 {shortAddr(account)}</span>
+              {estAbonne ? (
+                <span style={{
+                  background: "#22c55e", color: "white", borderRadius: 20,
+                  padding: "4px 12px", fontSize: 13, fontWeight: 700
+                }}>✅ Abonné</span>
+              ) : (
+                <button className="btn btn-primary" onClick={sAbonner}
+                  style={{ fontSize: 13, padding: "6px 14px" }}
+                  disabled={loadingAbo}>
+                  {loadingAbo ? "⏳ Transaction..." : "🔓 S'abonner 0.01 ETH"}
+                </button>
+              )}
+            </div>
           ) : (
             <button className="btn btn-wallet" onClick={connectWallet}>🦊 Connecter</button>
           )}
         </div>
       </header>
 
+      {/* TRADUCTION */}
       {showTranslate && (
         <div className="translate-panel">
           <p>🌐 Choisir une langue :</p>
@@ -178,6 +227,27 @@ function App() {
         </div>
       )}
 
+      {/* BANNIÈRE ABONNEMENT si connecté mais pas abonné */}
+      {account && !estAbonne && (
+        <div style={{
+          background: "linear-gradient(90deg, #f59e0b22, #6366f122)",
+          border: "1.5px solid #f59e0b",
+          borderRadius: 12, margin: "16px auto", maxWidth: 860,
+          padding: "14px 24px", display: "flex",
+          alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: 12
+        }}>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            ⚠️ <strong>Vous n'êtes pas abonné.</strong> Abonnez-vous pour créer des salons, poster et répondre.
+          </p>
+          <button className="btn btn-primary" onClick={sAbonner}
+            disabled={loadingAbo} style={{ fontSize: 13, padding: "8px 20px" }}>
+            {loadingAbo ? "⏳ Transaction..." : "🔓 S'abonner — 0.01 ETH / 30 jours"}
+          </button>
+        </div>
+      )}
+
+      {/* PAGE HOME */}
       {page === "home" && (
         <>
           <div className="hero">
@@ -210,6 +280,7 @@ function App() {
         </>
       )}
 
+      {/* PAGE FORUM */}
       {page === "forum" && activeForum && (
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour aux forums</button>
@@ -235,6 +306,7 @@ function App() {
         </div>
       )}
 
+      {/* PAGE TOPIC */}
       {page === "topic" && activeTopic && (
         <div className="forum-page">
           <button className="back-btn" onClick={goForum}>← Retour à {activeForum?.emoji} {activeForum?.name}</button>
@@ -253,17 +325,26 @@ function App() {
           <div style={{ borderRadius: 14, padding: 24, marginTop: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
             <h3 style={{ marginBottom: 16 }}>✍️ Votre réponse</h3>
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>⚠️ Connectez MetaMask pour répondre</p>}
+            {account && !estAbonne && <p style={{ color: "#f59e0b", marginBottom: 12, fontSize: 14 }}>⚠️ Abonnez-vous pour pouvoir répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)}
-              placeholder="Écrivez votre réponse..." rows={4} style={{ ...inputStyle, resize: "vertical" }} />
-            <button className="btn btn-primary" onClick={posterReponse} style={{ padding: "12px 28px", fontSize: 15 }}>📨 Poster la réponse</button>
+              placeholder="Écrivez votre réponse..." rows={4}
+              style={{ ...inputStyle, resize: "vertical" }}
+              disabled={!estAbonne} />
+            <button className="btn btn-primary" onClick={posterReponse}
+              style={{ padding: "12px 28px", fontSize: 15 }}
+              disabled={!estAbonne || !account}>
+              📨 Poster la réponse
+            </button>
           </div>
         </div>
       )}
 
+      {/* MODAL NOUVEAU SALON */}
       {showNewSalon && (
         <div style={{ position: "fixed", inset: 0, background: "#0008", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
           <div style={{ background: dark ? "#161b22" : "white", borderRadius: 16, padding: 32, width: 420, boxShadow: "0 16px 48px #0004", border: "1.5px solid #6366f1" }}>
             <h2 style={{ marginBottom: 24, color: "#6366f1" }}>➕ Nouveau salon</h2>
+            {!estAbonne && <p style={{ color: "#f59e0b", marginBottom: 16, fontSize: 14 }}>⚠️ Abonnement requis pour créer un salon</p>}
             <label style={{ fontSize: 13, opacity: 0.7 }}>Emoji</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", marginTop: 6 }}>
               {["💬","🔥","🎮","🎵","📚","🌍","⚽","🍕","🚀","💡","🎨","🔐"].map(e => (
@@ -283,11 +364,12 @@ function App() {
         </div>
       )}
 
+      {/* MODAL NOUVEAU TOPIC */}
       {showNewTopic && (
         <div style={{ position: "fixed", inset: 0, background: "#0008", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
           <div style={{ background: dark ? "#161b22" : "white", borderRadius: 16, padding: 32, width: 500, boxShadow: "0 16px 48px #0004", border: "1.5px solid #6366f1" }}>
             <h2 style={{ marginBottom: 24, color: "#6366f1" }}>✏️ Nouveau topic — {activeForum?.emoji} {activeForum?.name}</h2>
-            {!account && <p style={{ color: "#f59e0b", marginBottom: 16, fontSize: 14 }}>⚠️ Connectez MetaMask pour poster</p>}
+            {!estAbonne && <p style={{ color: "#f59e0b", marginBottom: 16, fontSize: 14 }}>⚠️ Abonnement requis pour poster</p>}
             <label style={{ fontSize: 13, opacity: 0.7 }}>Titre *</label>
             <input value={newTopic.title} onChange={e => setNewTopic({...newTopic, title: e.target.value})} placeholder="Titre de votre topic..." style={inputStyle} />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Message (optionnel)</label>
