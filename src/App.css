@@ -1,0 +1,141 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { font-family: 'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
+
+/* LIGHT MODE */
+body.light { background: #f0f2f5; color: #1a1a2e; }
+body.dark  { background: #0d1117; color: #e6edf3; }
+
+/* HEADER */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px;
+  position: sticky; top: 0; z-index: 100;
+}
+body.light .header { background: #ffffff; box-shadow: 0 2px 8px #0001; }
+body.dark  .header { background: #161b22; box-shadow: 0 2px 8px #0003; }
+
+.logo { font-size: 24px; font-weight: 800; letter-spacing: -1px; }
+body.light .logo { color: #6366f1; }
+body.dark  .logo { color: #818cf8; }
+.logo span { color: #f59e0b; }
+
+.header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* BUTTONS */
+.btn {
+  padding: 8px 16px; border-radius: 8px; border: none;
+  cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-primary { background: #6366f1; color: white; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-ghost {
+  background: transparent; font-size: 18px;
+  border: 1.5px solid;
+}
+body.light .btn-ghost { border-color: #e2e8f0; color: #334155; }
+body.dark  .btn-ghost { border-color: #30363d; color: #e6edf3; }
+.btn-ghost:hover { background: #6366f120; }
+
+.btn-wallet { background: #f59e0b; color: #1a1a2e; }
+.btn-wallet:hover { background: #d97706; }
+.wallet-addr {
+  font-size: 13px; font-weight: 600; padding: 8px 14px;
+  border-radius: 8px; border: 1.5px solid #6366f1;
+  color: #6366f1;
+}
+
+/* HERO */
+.hero {
+  text-align: center; padding: 60px 20px 40px;
+}
+.hero h1 { font-size: 48px; font-weight: 900; margin-bottom: 12px; }
+body.light .hero h1 { color: #1a1a2e; }
+body.dark  .hero h1 { color: #e6edf3; }
+.hero h1 span { color: #6366f1; }
+.hero p { font-size: 18px; opacity: 0.65; max-width: 500px; margin: 0 auto; }
+
+/* BADGE */
+.badge {
+  display: inline-block; padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; margin-bottom: 20px;
+  background: #6366f120; color: #6366f1;
+}
+
+/* FORUMS GRID */
+.forums-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px; max-width: 1100px; margin: 0 auto; padding: 0 24px 60px;
+}
+
+.forum-card {
+  border-radius: 14px; padding: 24px; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1.5px solid transparent;
+}
+body.light .forum-card { background: #ffffff; box-shadow: 0 2px 12px #0001; }
+body.dark  .forum-card { background: #161b22; box-shadow: 0 2px 12px #0003; }
+.forum-card:hover {
+  transform: translateY(-4px);
+  border-color: #6366f1;
+  box-shadow: 0 8px 24px #6366f130;
+}
+.forum-emoji { font-size: 36px; margin-bottom: 12px; }
+.forum-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.forum-desc { font-size: 14px; opacity: 0.6; margin-bottom: 14px; }
+.forum-meta { display: flex; gap: 16px; font-size: 13px; opacity: 0.5; }
+
+/* FORUM PAGE */
+.forum-page { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+.back-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 15px; font-weight: 600; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 6px;
+}
+body.light .back-btn { color: #6366f1; }
+body.dark  .back-btn { color: #818cf8; }
+
+.forum-header { margin-bottom: 32px; }
+.forum-header h2 { font-size: 32px; font-weight: 800; }
+
+.topic-card {
+  border-radius: 12px; padding: 18px 22px; margin-bottom: 12px;
+  cursor: pointer; transition: all 0.2s;
+  border: 1.5px solid transparent;
+  display: flex; align-items: center; justify-content: space-between;
+}
+body.light .topic-card { background: #ffffff; }
+body.dark  .topic-card { background: #161b22; }
+.topic-card:hover { border-color: #6366f1; transform: translateX(4px); }
+.topic-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.topic-meta { font-size: 13px; opacity: 0.5; }
+.topic-replies {
+  font-size: 13px; font-weight: 700;
+  background: #6366f120; color: #6366f1;
+  padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+}
+
+.new-topic-btn {
+  margin-bottom: 24px; width: 100%;
+  padding: 14px; font-size: 16px; border-radius: 10px;
+  border: 2px dashed; cursor: pointer; font-weight: 600;
+  transition: all 0.2s; background: transparent;
+}
+body.light .new-topic-btn { border-color: #e2e8f0; color: #6366f1; }
+body.dark  .new-topic-btn { border-color: #30363d; color: #818cf8; }
+.new-topic-btn:hover { background: #6366f115; border-color: #6366f1; }
+
+/* TRANSLATE PANEL */
+.translate-panel {
+  position: fixed; bottom: 80px; right: 20px;
+  border-radius: 14px; padding: 16px; z-index: 999;
+  box-shadow: 0 8px 32px #0003; min-width: 200px;
+}
+body.light .translate-panel { background: white; border: 1.5px solid #e2e8f0; }
+body.dark  .translate-panel { background: #161b22; border: 1.5px solid #30363d; }
+.translate-panel p { font-size: 13px; font-weight: 700; margin-bottom: 10px; opacity: 0.7; }
+
+/* FOOTER */
+.footer { text-align: center; padding: 20px; font-size: 13px; opacity: 0.4; }
+
