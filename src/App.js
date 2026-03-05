@@ -62,6 +62,7 @@ function App() {
   const [account, setAccount] = useState(null);
   const [estAbonne, setEstAbonne] = useState(false);
   const [loadingAbo, setLoadingAbo] = useState(false);
+  const [expiration, setExpiration] = useState(null);
   const [page, setPage] = useState("home");
   const [forums, setForums] = useState(() => {
     const saved = localStorage.getItem("freezone_forums");
@@ -91,6 +92,12 @@ function App() {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
       const abonne = await contract.estAbonne(addr);
       setEstAbonne(abonne);
+      // Récupérer la date d'expiration
+      const exp = await contract.abonnements(addr);
+      if (exp > 0) {
+        const date = new Date(Number(exp) * 1000);
+        setExpiration(date);
+      }
     } catch (e) { console.error("Erreur vérif abonnement:", e); }
   };
 
@@ -112,6 +119,7 @@ function App() {
       const tx = await contract.sAbonner({ value: ethers.parseEther("0.01") });
       await tx.wait();
       setEstAbonne(true);
+      await verifierAbonnement(account);
       alert("✅ Abonnement activé pour 30 jours !");
     } catch (e) {
       alert("❌ Erreur : " + e.message);
@@ -179,6 +187,11 @@ function App() {
     setNewReply("");
   };
 
+  // Jours restants avant expiration
+  const joursRestants = expiration
+    ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
   const inputStyle = {
     display: "block", width: "100%", padding: "10px 14px",
     borderRadius: 8, border: "1.5px solid #30363d",
@@ -196,6 +209,10 @@ function App() {
         <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
+          {account && (
+            <button className="btn btn-ghost" onClick={() => setPage("profil")}
+              style={{ fontSize: 13 }}>👤 Profil</button>
+          )}
           {account ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span className="wallet-addr">🦊 {shortAddr(account)}</span>
@@ -227,15 +244,14 @@ function App() {
         </div>
       )}
 
-      {/* BANNIÈRE ABONNEMENT si connecté mais pas abonné */}
-      {account && !estAbonne && (
+      {/* BANNIÈRE ABONNEMENT */}
+      {account && !estAbonne && page !== "profil" && (
         <div style={{
           background: "linear-gradient(90deg, #f59e0b22, #6366f122)",
-          border: "1.5px solid #f59e0b",
-          borderRadius: 12, margin: "16px auto", maxWidth: 860,
+          border: "1.5px solid #f59e0b", borderRadius: 12,
+          margin: "16px auto", maxWidth: 860,
           padding: "14px 24px", display: "flex",
-          alignItems: "center", justifyContent: "space-between",
-          flexWrap: "wrap", gap: 12
+          alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
         }}>
           <p style={{ margin: 0, fontSize: 14 }}>
             ⚠️ <strong>Vous n'êtes pas abonné.</strong> Abonnez-vous pour créer des salons, poster et répondre.
@@ -244,6 +260,176 @@ function App() {
             disabled={loadingAbo} style={{ fontSize: 13, padding: "8px 20px" }}>
             {loadingAbo ? "⏳ Transaction..." : "🔓 S'abonner — 0.01 ETH / 30 jours"}
           </button>
+        </div>
+      )}
+
+      {/* ========== PAGE PROFIL ========== */}
+      {page === "profil" && account && (
+        <div className="forum-page">
+          <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
+
+          {/* Carte profil principale */}
+          <div style={{
+            borderRadius: 20, padding: 36, marginBottom: 24,
+            background: dark ? "#161b22" : "#ffffff",
+            border: "1.5px solid #6366f1",
+            textAlign: "center"
+          }}>
+            <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
+            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{shortAddr(account)}</div>
+            <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 24, fontFamily: "monospace" }}>{account}</div>
+
+            {estAbonne ? (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#22c55e22", border: "1.5px solid #22c55e",
+                borderRadius: 20, padding: "8px 20px", marginBottom: 20
+              }}>
+                <span style={{ fontSize: 18 }}>✅</span>
+                <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 16 }}>Abonné actif</span>
+              </div>
+            ) : (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#f59e0b22", border: "1.5px solid #f59e0b",
+                borderRadius: 20, padding: "8px 20px", marginBottom: 20
+              }}>
+                <span style={{ fontSize: 18 }}>🔒</span>
+                <span style={{ color: "#f59e0b", fontWeight: 700, fontSize: 16 }}>Non abonné</span>
+              </div>
+            )}
+          </div>
+
+          {/* Infos abonnement */}
+          <div style={{
+            borderRadius: 16, padding: 28, marginBottom: 24,
+            background: dark ? "#161b22" : "#ffffff",
+            border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+          }}>
+            <h3 style={{ marginBottom: 20, fontSize: 18 }}>📋 Détails de l'abonnement</h3>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{
+                borderRadius: 12, padding: 20,
+                background: dark ? "#0d1117" : "#f8f9ff",
+                border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+              }}>
+                <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>STATUT</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: estAbonne ? "#22c55e" : "#f59e0b" }}>
+                  {estAbonne ? "✅ Actif" : "❌ Inactif"}
+                </div>
+              </div>
+
+              <div style={{
+                borderRadius: 12, padding: 20,
+                background: dark ? "#0d1117" : "#f8f9ff",
+                border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+              }}>
+                <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>JOURS RESTANTS</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: joursRestants > 7 ? "#22c55e" : "#f59e0b" }}>
+                  {estAbonne ? `${joursRestants} jours` : "—"}
+                </div>
+              </div>
+
+              <div style={{
+                borderRadius: 12, padding: 20,
+                background: dark ? "#0d1117" : "#f8f9ff",
+                border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+              }}>
+                <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>EXPIRATION</div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>
+                  {expiration ? expiration.toLocaleDateString("fr-FR") : "—"}
+                </div>
+              </div>
+
+              <div style={{
+                borderRadius: 12, padding: 20,
+                background: dark ? "#0d1117" : "#f8f9ff",
+                border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+              }}>
+                <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>PRIX</div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>0.01 ETH / 30 jours</div>
+              </div>
+            </div>
+
+            {/* Barre de progression */}
+            {estAbonne && (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
+                  <span>Progression de l'abonnement</span>
+                  <span>{joursRestants} / 30 jours restants</span>
+                </div>
+                <div style={{ background: dark ? "#0d1117" : "#e2e8f0", borderRadius: 8, height: 10, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: 8,
+                    width: `${(joursRestants / 30) * 100}%`,
+                    background: joursRestants > 7
+                      ? "linear-gradient(90deg, #6366f1, #22c55e)"
+                      : "linear-gradient(90deg, #f59e0b, #ef4444)",
+                    transition: "width 0.5s ease"
+                  }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Statistiques */}
+          <div style={{
+            borderRadius: 16, padding: 28, marginBottom: 24,
+            background: dark ? "#161b22" : "#ffffff",
+            border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+          }}>
+            <h3 style={{ marginBottom: 20, fontSize: 18 }}>📊 Mes statistiques</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+              {[
+                { label: "Topics créés", value: forums.reduce((a, f) => a + f.topics.filter(t => t.author === shortAddr(account)).length, 0), icon: "📝" },
+                { label: "Réponses postées", value: forums.reduce((a, f) => a + f.topics.reduce((b, t) => b + t.replies.filter(r => r.author === shortAddr(account)).length, 0), 0), icon: "💬" },
+                { label: "Salons rejoints", value: forums.length, icon: "🏛️" },
+              ].map((stat, i) => (
+                <div key={i} style={{
+                  borderRadius: 12, padding: 20, textAlign: "center",
+                  background: dark ? "#0d1117" : "#f8f9ff",
+                  border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "#6366f1" }}>{stat.value}</div>
+                  <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bouton renouveler */}
+          {estAbonne && joursRestants <= 7 && (
+            <div style={{
+              borderRadius: 16, padding: 24, marginBottom: 24,
+              background: "#f59e0b11", border: "1.5px solid #f59e0b"
+            }}>
+              <p style={{ margin: 0, marginBottom: 12 }}>
+                ⚠️ Votre abonnement expire dans <strong>{joursRestants} jours</strong>. Renouvelez maintenant !
+              </p>
+              <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo}>
+                {loadingAbo ? "⏳..." : "🔄 Renouveler — 0.01 ETH"}
+              </button>
+            </div>
+          )}
+
+          {!estAbonne && (
+            <div style={{ textAlign: "center", marginTop: 8 }}>
+              <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo}
+                style={{ fontSize: 16, padding: "14px 36px" }}>
+                {loadingAbo ? "⏳ Transaction..." : "🔓 S'abonner maintenant — 0.01 ETH"}
+              </button>
+            </div>
+          )}
+
+          {/* Lien Etherscan */}
+          <div style={{ textAlign: "center", marginTop: 24, opacity: 0.5, fontSize: 13 }}>
+            <a href={`https://sepolia.etherscan.io/address/${account}`}
+              target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>
+              Voir sur Etherscan ↗
+            </a>
+          </div>
         </div>
       )}
 
