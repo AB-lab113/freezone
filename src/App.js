@@ -77,6 +77,8 @@ function App() {
   const [newSalon, setNewSalon] = useState({ emoji: "💬", name: "", description: "" });
   const [newTopic, setNewTopic] = useState({ title: "", content: "" });
   const [newReply, setNewReply] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [rechercheTopic, setRechercheTopic] = useState("");
 
   useEffect(() => {
     localStorage.setItem("freezone_forums", JSON.stringify(forums));
@@ -87,7 +89,6 @@ function App() {
     document.body.className = dark ? "dark" : "light";
   }, [dark]);
 
-  // Récupère le prix dynamique depuis Chainlink
   const fetchPrix = async (prov) => {
     try {
       const provider = prov || new ethers.BrowserProvider(window.ethereum);
@@ -108,10 +109,7 @@ function App() {
       const abonne = await contract.estAbonne(addr);
       setEstAbonne(abonne);
       const exp = await contract.abonnements(addr);
-      if (exp > 0) {
-        const date = new Date(Number(exp) * 1000);
-        setExpiration(date);
-      }
+      if (exp > 0) setExpiration(new Date(Number(exp) * 1000));
       await fetchPrix(provider);
     } catch (e) { console.error("Erreur vérif abonnement:", e); }
   };
@@ -131,7 +129,6 @@ function App() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer);
-      // Prix dynamique depuis Chainlink (équivalent 2 EUR en ETH)
       const prixWei = await contract.getPrixEnWei();
       const tx = await contract.sAbonner({ value: prixWei });
       await tx.wait();
@@ -145,15 +142,17 @@ function App() {
     }
   };
 
-  const openForum = (forum) => { setActiveForum(forum); setPage("forum"); };
+  const openForum = (forum) => {
+    setActiveForum(forum);
+    setRechercheTopic("");
+    setPage("forum");
+  };
   const openTopic = (topic) => { setActiveTopic(topic); setPage("topic"); };
-  const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); };
+  const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); setRecherche(""); };
   const goForum = () => { setPage("forum"); setActiveTopic(null); };
   const shortAddr = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : "";
 
-  const prixEnETH = prixETH
-    ? (parseFloat(ethers.formatEther(prixETH))).toFixed(6)
-    : "...";
+  const prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : "...";
 
   const creerSalon = () => {
     if (!account) { alert("Connectez MetaMask pour créer un salon !"); return; }
@@ -221,31 +220,40 @@ function App() {
     boxSizing: "border-box", fontFamily: "inherit"
   };
 
+  // Forums filtrés par recherche
+  const forumsFiltered = forums.filter(f =>
+    f.name.toLowerCase().includes(recherche.toLowerCase()) ||
+    f.description.toLowerCase().includes(recherche.toLowerCase())
+  );
+
+  // Topics filtrés par recherche
+  const topicsFiltered = activeForum?.topics.filter(t =>
+    t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
+    t.author.toLowerCase().includes(rechercheTopic.toLowerCase())
+  ) || [];
+
   return (
     <div>
       {/* HEADER */}
       <header className="header">
-        <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
+        <div className="logo" onClick={goHome}>Free<span>Zone</span></div>
         <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
           {account && (
-            <button className="btn btn-ghost" onClick={() => setPage("profil")}
-              style={{ fontSize: 13 }}>👤 Profil</button>
+            <button className="btn btn-ghost" onClick={() => setPage("profil")} style={{ fontSize: 13 }}>
+              👤 Profil
+            </button>
           )}
           {account ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span className="wallet-addr">🦊 {shortAddr(account)}</span>
               {estAbonne ? (
-                <span style={{
-                  background: "#22c55e", color: "white", borderRadius: 20,
-                  padding: "4px 12px", fontSize: 13, fontWeight: 700
-                }}>✅ Abonné</span>
+                <span className="badge-abonne">✅ Abonné</span>
               ) : (
                 <button className="btn btn-primary" onClick={sAbonner}
-                  style={{ fontSize: 13, padding: "6px 14px" }}
-                  disabled={loadingAbo}>
-                  {loadingAbo ? "⏳ Transaction..." : `🔓 S'abonner ~${prixEnETH} ETH`}
+                  style={{ fontSize: 13, padding: "6px 14px" }} disabled={loadingAbo}>
+                  {loadingAbo ? <><span className="spinner"/>Transaction...</> : `🔓 S'abonner ~${prixEnETH} ETH`}
                 </button>
               )}
             </div>
@@ -278,7 +286,7 @@ function App() {
           </p>
           <button className="btn btn-primary" onClick={sAbonner}
             disabled={loadingAbo} style={{ fontSize: 13, padding: "8px 20px" }}>
-            {loadingAbo ? "⏳ Transaction..." : `🔓 S'abonner — ~${prixEnETH} ETH (2€) / 30 jours`}
+            {loadingAbo ? <><span className="spinner"/>Transaction...</> : `🔓 S'abonner — ~${prixEnETH} ETH (2€) / 30 jours`}
           </button>
         </div>
       )}
@@ -287,42 +295,24 @@ function App() {
       {page === "profil" && account && (
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
-          <div style={{
-            borderRadius: 20, padding: 36, marginBottom: 24,
-            background: dark ? "#161b22" : "#ffffff",
-            border: "1.5px solid #6366f1", textAlign: "center"
-          }}>
+          <div style={{ borderRadius: 20, padding: 36, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1", textAlign: "center" }}>
             <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{shortAddr(account)}</div>
             <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 24, fontFamily: "monospace" }}>{account}</div>
             {estAbonne ? (
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "#22c55e22", border: "1.5px solid #22c55e",
-                borderRadius: 20, padding: "8px 20px", marginBottom: 20
-              }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#22c55e22", border: "1.5px solid #22c55e", borderRadius: 20, padding: "8px 20px", marginBottom: 20 }}>
                 <span style={{ fontSize: 18 }}>✅</span>
                 <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 16 }}>Abonné actif</span>
               </div>
             ) : (
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "#f59e0b22", border: "1.5px solid #f59e0b",
-                borderRadius: 20, padding: "8px 20px", marginBottom: 20
-              }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f59e0b22", border: "1.5px solid #f59e0b", borderRadius: 20, padding: "8px 20px", marginBottom: 20 }}>
                 <span style={{ fontSize: 18 }}>🔒</span>
                 <span style={{ color: "#f59e0b", fontWeight: 700, fontSize: 16 }}>Non abonné</span>
               </div>
             )}
           </div>
 
-          {/* Prix Chainlink */}
-          <div style={{
-            borderRadius: 16, padding: 20, marginBottom: 24,
-            background: dark ? "#161b22" : "#ffffff",
-            border: "1.5px solid #6366f1",
-            display: "flex", alignItems: "center", justifyContent: "space-between"
-          }}>
+          <div style={{ borderRadius: 16, padding: 20, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 4 }}>🔗 PRIX ABONNEMENT (Chainlink ETH/USD)</div>
               <div style={{ fontSize: 22, fontWeight: 800, color: "#6366f1" }}>~{prixEnETH} ETH</div>
@@ -331,12 +321,7 @@ function App() {
             <div style={{ fontSize: 40 }}>⛓️</div>
           </div>
 
-          {/* Infos abonnement */}
-          <div style={{
-            borderRadius: 16, padding: 28, marginBottom: 24,
-            background: dark ? "#161b22" : "#ffffff",
-            border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
-          }}>
+          <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
             <h3 style={{ marginBottom: 20, fontSize: 18 }}>📋 Détails de l'abonnement</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {[
@@ -345,43 +330,25 @@ function App() {
                 { label: "EXPIRATION", value: expiration ? expiration.toLocaleDateString("fr-FR") : "—", color: null },
                 { label: "PRIX", value: `~${prixEnETH} ETH (2€)`, color: "#6366f1" },
               ].map((item, i) => (
-                <div key={i} style={{
-                  borderRadius: 12, padding: 20,
-                  background: dark ? "#0d1117" : "#f8f9ff",
-                  border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
-                }}>
+                <div key={i} style={{ borderRadius: 12, padding: 20, background: dark ? "#0d1117" : "#f8f9ff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
                   <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>{item.label}</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: item.color || "inherit" }}>{item.value}</div>
                 </div>
               ))}
             </div>
-
             {estAbonne && (
               <div style={{ marginTop: 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
-                  <span>Progression</span>
-                  <span>{joursRestants} / 30 jours restants</span>
+                  <span>Progression</span><span>{joursRestants} / 30 jours restants</span>
                 </div>
                 <div style={{ background: dark ? "#0d1117" : "#e2e8f0", borderRadius: 8, height: 10, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", borderRadius: 8,
-                    width: `${(joursRestants / 30) * 100}%`,
-                    background: joursRestants > 7
-                      ? "linear-gradient(90deg, #6366f1, #22c55e)"
-                      : "linear-gradient(90deg, #f59e0b, #ef4444)",
-                    transition: "width 0.5s ease"
-                  }} />
+                  <div style={{ height: "100%", borderRadius: 8, width: `${(joursRestants / 30) * 100}%`, background: joursRestants > 7 ? "linear-gradient(90deg, #6366f1, #22c55e)" : "linear-gradient(90deg, #f59e0b, #ef4444)", transition: "width 0.5s ease" }} />
                 </div>
               </div>
             )}
           </div>
 
-          {/* Statistiques */}
-          <div style={{
-            borderRadius: 16, padding: 28, marginBottom: 24,
-            background: dark ? "#161b22" : "#ffffff",
-            border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
-          }}>
+          <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
             <h3 style={{ marginBottom: 20, fontSize: 18 }}>📊 Mes statistiques</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
               {[
@@ -389,11 +356,7 @@ function App() {
                 { label: "Réponses postées", value: forums.reduce((a, f) => a + f.topics.reduce((b, t) => b + t.replies.filter(r => r.author === shortAddr(account)).length, 0), 0), icon: "💬" },
                 { label: "Salons disponibles", value: forums.length, icon: "🏛️" },
               ].map((stat, i) => (
-                <div key={i} style={{
-                  borderRadius: 12, padding: 20, textAlign: "center",
-                  background: dark ? "#0d1117" : "#f8f9ff",
-                  border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0"
-                }}>
+                <div key={i} style={{ borderRadius: 12, padding: 20, textAlign: "center", background: dark ? "#0d1117" : "#f8f9ff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
                   <div style={{ fontSize: 28, fontWeight: 800, color: "#6366f1" }}>{stat.value}</div>
                   <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{stat.label}</div>
@@ -403,13 +366,8 @@ function App() {
           </div>
 
           {estAbonne && joursRestants <= 7 && (
-            <div style={{
-              borderRadius: 16, padding: 24, marginBottom: 24,
-              background: "#f59e0b11", border: "1.5px solid #f59e0b"
-            }}>
-              <p style={{ margin: 0, marginBottom: 12 }}>
-                ⚠️ Votre abonnement expire dans <strong>{joursRestants} jours</strong>. Renouvelez maintenant !
-              </p>
+            <div style={{ borderRadius: 16, padding: 24, marginBottom: 24, background: "#f59e0b11", border: "1.5px solid #f59e0b" }}>
+              <p style={{ margin: 0, marginBottom: 12 }}>⚠️ Votre abonnement expire dans <strong>{joursRestants} jours</strong>. Renouvelez maintenant !</p>
               <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo}>
                 {loadingAbo ? "⏳..." : `🔄 Renouveler — ~${prixEnETH} ETH (2€)`}
               </button>
@@ -418,28 +376,21 @@ function App() {
 
           {!estAbonne && (
             <div style={{ textAlign: "center", marginTop: 8 }}>
-              <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo}
-                style={{ fontSize: 16, padding: "14px 36px" }}>
+              <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo} style={{ fontSize: 16, padding: "14px 36px" }}>
                 {loadingAbo ? "⏳ Transaction..." : `🔓 S'abonner — ~${prixEnETH} ETH (2€/mois)`}
               </button>
             </div>
           )}
 
           <div style={{ textAlign: "center", marginTop: 24, opacity: 0.5, fontSize: 13 }}>
-            <a href={`https://sepolia.etherscan.io/address/${account}`}
-              target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>
-              Voir sur Etherscan ↗
-            </a>
+            <a href={`https://sepolia.etherscan.io/address/${account}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Voir sur Etherscan ↗</a>
             {" · "}
-            <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
-              target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>
-              Contrat ↗
-            </a>
+            <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Contrat ↗</a>
           </div>
         </div>
       )}
 
-      {/* PAGE HOME */}
+      {/* ========== PAGE HOME ========== */}
       {page === "home" && (
         <>
           <div className="hero">
@@ -447,35 +398,55 @@ function App() {
             <h1>Bienvenue sur <span>Free Zone</span></h1>
             <p>Le forum décentralisé où la parole est libre. Abonnement sécurisé par Ethereum.</p>
           </div>
+
+          {/* BARRE DE RECHERCHE SALONS */}
+          <div className="search-container">
+            <span className="search-icon">🔍</span>
+            <input
+              className="search-input"
+              placeholder="Rechercher un salon..."
+              value={recherche}
+              onChange={e => setRecherche(e.target.value)}
+            />
+            {recherche && <button className="search-clear" onClick={() => setRecherche("")}>✕</button>}
+          </div>
+
           <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <button className="btn btn-primary" onClick={() => setShowNewSalon(true)}
-              style={{ fontSize: 16, padding: "12px 28px" }}>➕ Créer un nouveau salon</button>
+            <button className="btn btn-primary" onClick={() => setShowNewSalon(true)} style={{ fontSize: 16, padding: "12px 28px" }}>
+              ➕ Créer un nouveau salon
+            </button>
           </div>
-          <div className="forums-grid">
-            {forums.map(f => (
-              <div key={f.id} className="forum-card" onClick={() => openForum(f)}>
-                <div className="forum-emoji">{f.emoji}</div>
-                <div className="forum-name">{f.name}</div>
-                <div className="forum-desc">{f.description}</div>
-                <div className="forum-meta">
-                  <span>📝 {f.topics.length} topics</span>
-                  <span>💬 {f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
+
+          {forumsFiltered.length === 0 ? (
+            <div className="no-results">
+              <span>🔍</span>
+              <p>Aucun salon trouvé pour "<strong>{recherche}</strong>"</p>
+            </div>
+          ) : (
+            <div className="forums-grid">
+              {forumsFiltered.map(f => (
+                <div key={f.id} className="forum-card" onClick={() => openForum(f)}>
+                  <div className="forum-emoji">{f.emoji}</div>
+                  <div className="forum-name">{f.name}</div>
+                  <div className="forum-desc">{f.description}</div>
+                  <div className="forum-meta">
+                    <span>📝 {f.topics.length} topics</span>
+                    <span>💬 {f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+
           <div className="footer">
             Free Zone © 2026 —{" "}
-            <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`}
-              target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Contrat Etherscan ↗</a>
-            {prixETH && <span style={{ marginLeft: 16, opacity: 0.6 }}>
-              💰 Abonnement : ~{prixEnETH} ETH = 2€/mois
-            </span>}
+            <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer">Contrat Etherscan ↗</a>
+            {prixETH && <span style={{ marginLeft: 16 }}>💰 Abonnement : ~{prixEnETH} ETH = 2€/mois</span>}
           </div>
         </>
       )}
 
-      {/* PAGE FORUM */}
+      {/* ========== PAGE FORUM ========== */}
       {page === "forum" && activeForum && (
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour aux forums</button>
@@ -484,24 +455,39 @@ function App() {
             <p style={{ opacity: 0.6, marginTop: 6 }}>{activeForum.description}</p>
           </div>
           <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>✏️ Nouveau topic</button>
-          {activeForum.topics.length === 0 && (
-            <p style={{ textAlign: "center", opacity: 0.5, marginTop: 40 }}>
-              Aucun topic pour l'instant. Soyez le premier à poster !
-            </p>
-          )}
-          {activeForum.topics.map(t => (
-            <div key={t.id} className="topic-card" onClick={() => openTopic(t)}>
-              <div>
-                <div className="topic-title">{t.title}</div>
-                <div className="topic-meta">par {t.author} · {t.date}</div>
-              </div>
-              <div className="topic-replies">💬 {t.replies.length}</div>
+
+          {/* BARRE DE RECHERCHE TOPICS */}
+          <div className="search-container" style={{ margin: "0 0 20px" }}>
+            <span className="search-icon">🔍</span>
+            <input
+              className="search-input"
+              placeholder="Rechercher un topic..."
+              value={rechercheTopic}
+              onChange={e => setRechercheTopic(e.target.value)}
+            />
+            {rechercheTopic && <button className="search-clear" onClick={() => setRechercheTopic("")}>✕</button>}
+          </div>
+
+          {topicsFiltered.length === 0 ? (
+            <div className="no-results">
+              <span>🔍</span>
+              <p>{rechercheTopic ? `Aucun topic trouvé pour "${rechercheTopic}"` : "Aucun topic pour l'instant. Soyez le premier à poster !"}</p>
             </div>
-          ))}
+          ) : (
+            topicsFiltered.map(t => (
+              <div key={t.id} className="topic-card" onClick={() => openTopic(t)}>
+                <div>
+                  <div className="topic-title">{t.title}</div>
+                  <div className="topic-meta">par {t.author} · {t.date}</div>
+                </div>
+                <div className="topic-replies">💬 {t.replies.length}</div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* PAGE TOPIC */}
+      {/* ========== PAGE TOPIC ========== */}
       {page === "topic" && activeTopic && (
         <div className="forum-page">
           <button className="back-btn" onClick={goForum}>← Retour à {activeForum?.emoji} {activeForum?.name}</button>
@@ -523,11 +509,9 @@ function App() {
             {account && !estAbonne && <p style={{ color: "#f59e0b", marginBottom: 12, fontSize: 14 }}>⚠️ Abonnez-vous pour pouvoir répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)}
               placeholder="Écrivez votre réponse..." rows={4}
-              style={{ ...inputStyle, resize: "vertical" }}
-              disabled={!estAbonne} />
+              style={{ ...inputStyle, resize: "vertical" }} disabled={!estAbonne} />
             <button className="btn btn-primary" onClick={posterReponse}
-              style={{ padding: "12px 28px", fontSize: 15 }}
-              disabled={!estAbonne || !account}>
+              style={{ padding: "12px 28px", fontSize: 15 }} disabled={!estAbonne || !account}>
               📨 Poster la réponse
             </button>
           </div>
@@ -541,14 +525,11 @@ function App() {
             <h2 style={{ marginBottom: 24, color: "#6366f1" }}>➕ Nouveau salon</h2>
             {!estAbonne && <p style={{ color: "#f59e0b", marginBottom: 16, fontSize: 14 }}>⚠️ Abonnement requis pour créer un salon</p>}
             <label style={{ fontSize: 13, opacity: 0.7 }}>Emoji</label>
-            <input value={newSalon.emoji} onChange={e => setNewSalon({...newSalon, emoji: e.target.value})}
-              style={inputStyle} placeholder="💬" />
+            <input value={newSalon.emoji} onChange={e => setNewSalon({...newSalon, emoji: e.target.value})} style={inputStyle} placeholder="💬" />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Nom du salon *</label>
-            <input value={newSalon.name} onChange={e => setNewSalon({...newSalon, name: e.target.value})}
-              style={inputStyle} placeholder="Ex: Sciences, Art, Sport..." />
+            <input value={newSalon.name} onChange={e => setNewSalon({...newSalon, name: e.target.value})} style={inputStyle} placeholder="Ex: Sciences, Art, Sport..." />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Description</label>
-            <input value={newSalon.description} onChange={e => setNewSalon({...newSalon, description: e.target.value})}
-              style={inputStyle} placeholder="Description courte du salon" />
+            <input value={newSalon.description} onChange={e => setNewSalon({...newSalon, description: e.target.value})} style={inputStyle} placeholder="Description courte du salon" />
             <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
               <button className="btn btn-primary" onClick={creerSalon} style={{ flex: 1 }}>✅ Créer</button>
               <button className="btn btn-ghost" onClick={() => setShowNewSalon(false)} style={{ flex: 1 }}>Annuler</button>
@@ -564,11 +545,9 @@ function App() {
             <h2 style={{ marginBottom: 24, color: "#6366f1" }}>✏️ Nouveau topic</h2>
             {!estAbonne && <p style={{ color: "#f59e0b", marginBottom: 16, fontSize: 14 }}>⚠️ Abonnement requis pour poster</p>}
             <label style={{ fontSize: 13, opacity: 0.7 }}>Titre *</label>
-            <input value={newTopic.title} onChange={e => setNewTopic({...newTopic, title: e.target.value})}
-              style={inputStyle} placeholder="Titre de votre topic..." />
+            <input value={newTopic.title} onChange={e => setNewTopic({...newTopic, title: e.target.value})} style={inputStyle} placeholder="Titre de votre topic..." />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Contenu</label>
-            <textarea value={newTopic.content} onChange={e => setNewTopic({...newTopic, content: e.target.value})}
-              style={{ ...inputStyle, resize: "vertical" }} rows={4} placeholder="Développez votre sujet..." />
+            <textarea value={newTopic.content} onChange={e => setNewTopic({...newTopic, content: e.target.value})} style={{ ...inputStyle, resize: "vertical" }} rows={4} placeholder="Développez votre sujet..." />
             <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
               <button className="btn btn-primary" onClick={creerTopic} style={{ flex: 1 }}>📝 Publier</button>
               <button className="btn btn-ghost" onClick={() => setShowNewTopic(false)} style={{ flex: 1 }}>Annuler</button>
