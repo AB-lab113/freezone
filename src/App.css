@@ -311,3 +311,84 @@ body.light .footer { border-color: #e2e8f0; }
   .hero { padding: 48px 16px 32px; }
   .hero h1 { font-size: 32px; }
 }
+/* ===== LIKES ===== */
+.like-btn {
+  background: none; border: 1.5px solid #30363d;
+  border-radius: 20px; padding: 4px 12px;
+  cursor: pointer; font-size: 13px; color: inherit;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.like-btn:hover { border-color: #ef4444; color: #ef4444; transform: scale(1.05); }
+.like-btn.liked { background: #ef444422; border-color: #ef4444; color: #ef4444; }
+
+/* ===== TRI ===== */
+.sort-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.sort-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1.5px solid #30363d;
+  background: none; color: inherit; cursor: pointer; font-size: 13px; transition: all 0.2s;
+}
+.sort-btn.active, .sort-btn:hover { background: #6366f122; border-color: #6366f1; color: #6366f1; }
+
+/* ===== PAGINATION ===== */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 24px; }
+.page-btn {
+  width: 36px; height: 36px; border-radius: 8px;
+  border: 1.5px solid #30363d; background: none; color: inherit;
+  cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
+}
+.page-btn.active { background: #6366f1; border-color: #6366f1; color: white; }
+.page-btn:hover:not(.active) { border-color: #6366f1; color: #6366f1; }
+.page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ===== MESSAGERIE ===== */
+.messages-list { display: flex; flex-direction: column; gap: 12px; }
+.conversation-item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px; border-radius: 12px; border: 1.5px solid #30363d;
+  cursor: pointer; transition: all 0.2s;
+}
+.conversation-item:hover { border-color: #6366f1; background: #6366f111; }
+.conv-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.conv-info { flex: 1; min-width: 0; }
+.conv-addr { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.conv-preview { font-size: 13px; opacity: 0.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conv-time { font-size: 12px; opacity: 0.4; }
+.unread-badge {
+  background: #6366f1; color: white; border-radius: 50%;
+  width: 20px; height: 20px; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 700;
+}
+
+/* ===== BULLES DE CHAT ===== */
+.chat-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.bubble-wrapper { display: flex; flex-direction: column; }
+.bubble-wrapper.sent { align-items: flex-end; }
+.bubble-wrapper.received { align-items: flex-start; }
+.bubble { max-width: 70%; padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.5; }
+.bubble.sent { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-bottom-right-radius: 4px; }
+.bubble.received { background: #30363d; border-bottom-left-radius: 4px; }
+.bubble-time { font-size: 11px; opacity: 0.5; margin-top: 4px; padding: 0 4px; }
+
+/* ===== INPUT MESSAGE ===== */
+.message-input-bar {
+  display: flex; gap: 10px; align-items: flex-end;
+  padding: 16px; border-top: 1.5px solid #30363d; margin-top: 8px;
+}
+.message-input {
+  flex: 1; padding: 10px 14px; border-radius: 20px;
+  border: 1.5px solid #30363d; background: transparent;
+  color: inherit; font-size: 14px; font-family: inherit; resize: none; outline: none;
+}
+.message-input:focus { border-color: #6366f1; }
+.send-btn {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center; transition: transform 0.2s;
+}
+.send-btn:hover { transform: scale(1.1); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
