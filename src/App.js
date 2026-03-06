@@ -313,15 +313,15 @@ function App() {
           {account && (
             <>
               <button className="btn btn-ghost" onClick={() => setPage("messages")}
-                style={{ position: "relative", fontSize: 13 }}>
-                📩 Messages
+                style={{ position: "relative", fontSize: 16 }}>
+                📩
                 {unreadCount > 0 && (
                   <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                     {unreadCount}
                   </span>
                 )}
               </button>
-              <button className="btn btn-ghost" onClick={() => setPage("profil")} style={{ fontSize: 13 }}>👤 Profil</button>
+              <button className="btn btn-ghost" onClick={() => setPage("profil")} style={{ fontSize: 16 }}>👤</button>
             </>
           )}
           {account ? (
