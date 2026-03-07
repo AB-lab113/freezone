@@ -137,8 +137,10 @@ function App() {
 
   const demarrerConversation = () => {
     if (!newMessageTo.trim()) { alert("Entrez une adresse !"); return; }
-    const addr = newMessageTo.trim();
-    const key = getConvKey(shortAddr(account), addr);
+    const raw = newMessageTo.trim();
+  const addr = raw.length > 15 ? `${raw.slice(0,6)}...${raw.slice(-4)}` : raw;
+  const key = getConvKey(shortAddr(account), addr);
+
     const existing = messages.find(m => m.key === key);
     if (existing) { setActiveConversation(existing); }
     else {
