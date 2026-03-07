@@ -93,6 +93,16 @@ function App() {
   const [newMessage, setNewMessage] = useState("");
   const [newMessageTo, setNewMessageTo] = useState("");
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [pseudo, setPseudo] = useState(() => {
+    const saved = localStorage.getItem("freezone_pseudo");
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [membres, setMembres] = useState(() => {
+    const saved = localStorage.getItem("freezone_membres");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showPseudoModal, setShowPseudoModal] = useState(false);
+  const [newPseudo, setNewPseudo] = useState("");
 
   useEffect(() => { localStorage.setItem("freezone_forums", JSON.stringify(forums)); }, [forums]);
   useEffect(() => {
@@ -101,6 +111,8 @@ function App() {
   }, [dark]);
   useEffect(() => { localStorage.setItem("freezone_likes", JSON.stringify(likes)); }, [likes]);
   useEffect(() => { localStorage.setItem("freezone_messages", JSON.stringify(messages)); }, [messages]);
+  useEffect(() => { localStorage.setItem("freezone_pseudo", JSON.stringify(pseudo)); }, [pseudo]);
+  useEffect(() => { localStorage.setItem("freezone_membres", JSON.stringify(membres)); }, [membres]);
 
   const toggleLike = (key) => {
     if (!account) { alert("Connectez MetaMask pour liker !"); return; }
@@ -186,9 +198,39 @@ function App() {
     if (!window.ethereum?.isMetaMask) { alert("Installez MetaMask !"); return; }
     const provider = new ethers.BrowserProvider(window.ethereum);
     const accounts = await provider.send("eth_requestAccounts", []);
-    setAccount(accounts[0]);
-    await verifierAbonnement(accounts[0], provider);
+    const addr = accounts[0];
+    setAccount(addr);
+    await verifierAbonnement(addr, provider);
+    const shortA = `${addr.slice(0,6)}...${addr.slice(-4)}`;
+    const savedPseudos = JSON.parse(localStorage.getItem("freezone_pseudo") || "{}");
+    const savedMembres = JSON.parse(localStorage.getItem("freezone_membres") || "[]");
+    const existing = savedMembres.find(m => m.address === shortA);
+    if (existing) {
+      const updated = savedMembres.map(m => m.address === shortA ? { ...m, lastSeen: Date.now() } : m);
+      setMembres(updated);
+      localStorage.setItem("freezone_membres", JSON.stringify(updated));
+    } else {
+      const newM = { address: shortA, pseudo: savedPseudos[shortA] || "", lastSeen: Date.now() };
+      const updated = [...savedMembres, newM];
+      setMembres(updated);
+      localStorage.setItem("freezone_membres", JSON.stringify(updated));
+    }
+    if (!savedPseudos[shortA]) setShowPseudoModal(true);
   };
+
+  const savePseudo = () => {
+    if (!newPseudo.trim()) { alert("Entrez un pseudo !"); return; }
+    const shortA = shortAddr(account);
+    const updatedPseudo = { ...pseudo, [shortA]: newPseudo.trim() };
+    setPseudo(updatedPseudo);
+    const updatedMembres = membres.map(m => m.address === shortA ? { ...m, pseudo: newPseudo.trim() } : m);
+    setMembres(updatedMembres);
+    setShowPseudoModal(false);
+    setNewPseudo("");
+  };
+
+  const getDisplayName = (addr) => pseudo[addr] || addr;
+  const isOnline = (lastSeen) => lastSeen && (Date.now() - lastSeen) < 30 * 60 * 1000;
 
   const sAbonner = async () => {
     if (!account) { alert("Connectez MetaMask !"); return; }
@@ -288,12 +330,15 @@ function App() {
                   </span>
                 )}
               </button>
+              <button className="btn btn-ghost" onClick={() => setPage("annuaire")} style={{ fontSize: 16 }}>🗂️</button>
               <button className="btn btn-ghost" onClick={() => setPage("profil")} style={{ fontSize: 16 }}>👤</button>
             </>
           )}
           {account ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span className="wallet-addr">🦊 {shortAddr(account)}</span>
+              <span className="wallet-addr" style={{ cursor: "pointer" }} onClick={() => setShowPseudoModal(true)}>
+                🦊 {pseudo[shortAddr(account)] || shortAddr(account)}
+              </span>
               {estAbonne ? (
                 <span className="badge-abonne">✅ Abonné</span>
               ) : (
@@ -316,7 +361,7 @@ function App() {
         </div>
       )}
 
-      {account && !estAbonne && !["profil","messages","conversation"].includes(page) && (
+      {account && !estAbonne && !["profil","messages","conversation","annuaire"].includes(page) && (
         <div style={{ background: "linear-gradient(90deg, #f59e0b22, #6366f122)", border: "1.5px solid #f59e0b", borderRadius: 12, margin: "16px auto", maxWidth: 860, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14 }}>⚠️ <strong>Vous n'êtes pas abonné.</strong> Abonnez-vous pour 2€/mois en ETH.</p>
           <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo} style={{ fontSize: 13, padding: "8px 20px" }}>
@@ -351,7 +396,7 @@ function App() {
                   <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
                     <div className="conv-avatar">🦊</div>
                     <div className="conv-info">
-                      <div className="conv-addr">{other}</div>
+                      <div className="conv-addr">{getDisplayName(other)}</div>
                       <div className="conv-preview">{lastMsg ? lastMsg.content : "Démarrer la conversation..."}</div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -385,7 +430,7 @@ function App() {
           <div style={{ padding: "16px 24px", borderBottom: "1.5px solid #30363d", display: "flex", alignItems: "center", gap: 16 }}>
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage("messages")}>←</button>
             <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>🦊</div>
-            <div style={{ fontWeight: 700 }}>{activeConversation.participants.find(p => p !== shortAddr(account))}</div>
+            <div style={{ fontWeight: 700 }}>{getDisplayName(activeConversation.participants.find(p => p !== shortAddr(account)))}</div>
             <div style={{ marginLeft: "auto", fontSize: 12, opacity: 0.5 }}>🔒 Chiffré</div>
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: "auto" }}>
@@ -418,14 +463,75 @@ function App() {
         </div>
       )}
 
+      {/* PAGE ANNUAIRE */}
+      {page === "annuaire" && account && (
+        <div className="forum-page">
+          <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <h2 style={{ fontSize: 22 }}>🗂️ Annuaire des membres</h2>
+            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13 }}>
+              ✏️ Mon pseudo : <strong>{pseudo[shortAddr(account)] || "Non défini"}</strong>
+            </button>
+          </div>
+          <div style={{ background: "#6366f111", border: "1.5px solid #6366f133", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13 }}>
+            👥 {membres.length} membre{membres.length > 1 ? "s" : ""} enregistré{membres.length > 1 ? "s" : ""}
+          </div>
+          {membres.length === 0 ? (
+            <div className="no-results" style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
+              <p style={{ opacity: 0.5 }}>Aucun membre enregistré pour l'instant.</p>
+            </div>
+          ) : (
+            <div className="annuaire-grid">
+              {membres.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)).map((m, i) => (
+                <div key={i} className="membre-card">
+                  <div className="membre-avatar">🦊</div>
+                  <div className="membre-info">
+                    <div className="membre-pseudo">{m.pseudo || m.address}</div>
+                    <div className="membre-addr">{m.address}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                    <span className={`badge-online ${isOnline(m.lastSeen) ? "online" : "offline"}`}>
+                      {isOnline(m.lastSeen) ? "En ligne" : "Hors ligne"}
+                    </span>
+                    {m.address !== shortAddr(account) && (
+                      <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }}
+                        onClick={() => {
+                          const key = [shortAddr(account), m.address].sort().join("___");
+                          const existing = messages.find(c => c.key === key);
+                          if (existing) { setActiveConversation(existing); }
+                          else {
+                            const newConv = { id: Date.now(), key, participants: [shortAddr(account), m.address], msgs: [] };
+                            setMessages(prev => [...prev, newConv]);
+                            setActiveConversation(newConv);
+                          }
+                          setPage("conversation");
+                        }}>
+                        💬 Message
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* PAGE PROFIL */}
       {page === "profil" && account && (
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ borderRadius: 20, padding: 36, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1", textAlign: "center" }}>
             <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{shortAddr(account)}</div>
-            <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 24, fontFamily: "monospace" }}>{account}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4, color: "#6366f1" }}>
+              {pseudo[shortAddr(account)] || shortAddr(account)}
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 16, fontFamily: "monospace" }}>{account}</div>
+            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13, marginBottom: 16 }}>
+              ✏️ Changer le pseudo
+            </button>
+            <br/>
             {estAbonne ? (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#22c55e22", border: "1.5px solid #22c55e", borderRadius: 20, padding: "8px 20px" }}>
                 <span>✅</span><span style={{ color: "#22c55e", fontWeight: 700 }}>Abonné actif</span>
@@ -625,6 +731,30 @@ function App() {
             <button className="btn btn-primary" onClick={posterReponse} style={{ padding: "12px 28px" }} disabled={!estAbonne || !account}>
               📨 Poster la réponse
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PSEUDO */}
+      {showPseudoModal && (
+        <div className="pseudo-modal-overlay">
+          <div className="pseudo-modal">
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🦊</div>
+            <h2>Choisissez votre pseudo</h2>
+            <p>Il sera visible dans l'annuaire et la messagerie.<br/>Vous pourrez le changer à tout moment.</p>
+            <input
+              className="pseudo-input"
+              value={newPseudo}
+              onChange={e => setNewPseudo(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && savePseudo()}
+              placeholder="Votre pseudo..."
+              maxLength={20}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button className="btn btn-primary" onClick={savePseudo} style={{ padding: "10px 28px" }}>✅ Valider</button>
+              <button className="btn btn-ghost" onClick={() => setShowPseudoModal(false)}>Plus tard</button>
+            </div>
           </div>
         </div>
       )}
