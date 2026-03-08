@@ -103,6 +103,7 @@ function App() {
   });
   const [showPseudoModal, setShowPseudoModal] = useState(false);
   const [newPseudo, setNewPseudo] = useState("");
+  const [toasts, setToasts] = useState([]);
 
   useEffect(() => { localStorage.setItem("freezone_forums", JSON.stringify(forums)); }, [forums]);
   useEffect(() => {
@@ -113,6 +114,20 @@ function App() {
   useEffect(() => { localStorage.setItem("freezone_messages", JSON.stringify(messages)); }, [messages]);
   useEffect(() => { localStorage.setItem("freezone_pseudo", JSON.stringify(pseudo)); }, [pseudo]);
   useEffect(() => { localStorage.setItem("freezone_membres", JSON.stringify(membres)); }, [membres]);
+
+  const addToast = (icon, title, msg, type = "info") => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, icon, title, msg, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t));
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
+    }, 3500);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t));
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
+  };
 
   const toggleLike = (key) => {
     if (!account) { alert("Connectez MetaMask pour liker !"); return; }
@@ -138,9 +153,8 @@ function App() {
   const demarrerConversation = () => {
     if (!newMessageTo.trim()) { alert("Entrez une adresse !"); return; }
     const raw = newMessageTo.trim();
-  const addr = raw.length > 15 ? `${raw.slice(0,6)}...${raw.slice(-4)}` : raw;
-  const key = getConvKey(shortAddr(account), addr);
-
+    const addr = raw.length > 15 ? `${raw.slice(0,6)}...${raw.slice(-4)}` : raw;
+    const key = getConvKey(shortAddr(account), addr);
     const existing = messages.find(m => m.key === key);
     if (existing) { setActiveConversation(existing); }
     else {
@@ -164,6 +178,7 @@ function App() {
     });
     setActiveConversation(updatedConv);
     setNewMessage("");
+    addToast("📩", "Message envoyé !", `À ${activeConversation.participants.find(p => p !== shortAddr(account))}`, "info");
   };
 
   const ouvrirConversation = (conv) => {
@@ -218,6 +233,8 @@ function App() {
       localStorage.setItem("freezone_membres", JSON.stringify(updated));
     }
     if (!savedPseudos[shortA]) setShowPseudoModal(true);
+    if ("Notification" in window) Notification.requestPermission();
+    addToast("🦊", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
   };
 
   const savePseudo = () => {
@@ -229,6 +246,7 @@ function App() {
     setMembres(updatedMembres);
     setShowPseudoModal(false);
     setNewPseudo("");
+    addToast("✅", "Pseudo enregistré !", `Vous êtes maintenant ${newPseudo.trim()}`, "success");
   };
 
   const getDisplayName = (addr) => pseudo[addr] || addr;
@@ -246,7 +264,7 @@ function App() {
       await tx.wait();
       setEstAbonne(true);
       await verifierAbonnement(account);
-      alert("✅ Abonnement activé pour 30 jours !");
+      addToast("✅", "Abonnement activé !", "30 jours d'accès complet à FreeZone", "success");
     } catch (e) { alert("❌ Erreur : " + e.message); }
     finally { setLoadingAbo(false); }
   };
@@ -265,6 +283,7 @@ function App() {
     const salon = { id: newSalon.name.toLowerCase().replace(/\s+/g, "-"), emoji: newSalon.emoji, name: newSalon.name, description: newSalon.description || "Nouveau salon", topics: [] };
     setForums([...forums, salon]);
     setShowNewSalon(false);
+    addToast("🎉", "Salon créé !", `Le salon "${newSalon.name}" est disponible`, "success");
     setNewSalon({ emoji: "💬", name: "", description: "" });
   };
 
@@ -277,6 +296,7 @@ function App() {
     setForums(updatedForums);
     setActiveForum(updatedForums.find(f => f.id === activeForum.id));
     setShowNewTopic(false);
+    addToast("📝", "Topic publié !", newTopic.title.slice(0, 40), "success");
     setNewTopic({ title: "", content: "" });
   };
 
@@ -291,6 +311,7 @@ function App() {
     setActiveForum(updatedForums.find(f => f.id === activeForum.id));
     setActiveTopic(updatedTopic);
     setNewReply("");
+    addToast("💬", "Réponse postée !", "Votre message a été publié", "success");
   };
 
   const joursRestants = expiration ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24))) : 0;
@@ -327,7 +348,7 @@ function App() {
               <button className="btn btn-ghost" onClick={() => setPage("messages")} style={{ position: "relative", fontSize: 16 }}>
                 📩
                 {unreadCount > 0 && (
-                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                  <span className="badge-pulse" style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                     {unreadCount}
                   </span>
                 )}
@@ -736,6 +757,20 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* TOAST NOTIFICATIONS */}
+      <div className="toast-container">
+        {toasts.map(t => (
+          <div key={t.id} className={`toast ${t.type} ${t.closing ? "closing" : ""}`}>
+            <div className="toast-icon">{t.icon}</div>
+            <div className="toast-content">
+              <div className="toast-title">{t.title}</div>
+              <div className="toast-msg">{t.msg}</div>
+            </div>
+            <button className="toast-close" onClick={() => removeToast(t.id)}>✕</button>
+          </div>
+        ))}
+      </div>
 
       {/* MODAL PSEUDO */}
       {showPseudoModal && (
