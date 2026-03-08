@@ -5,6 +5,7 @@ import ForumAboABI from "./ForumAbo.json";
 
 const CONTRACT_ADDRESS = "0x0cB2704923F4f3AdD852A087374366C030a7905c";
 const TOPICS_PAR_PAGE = 5;
+const AVATARS = ["🦊","🦈","🐺","🦁","🐯","🦋","🔥","⚡","👾","🤖","💀","🎭","🐉","🦅","🌙","⭐","💎","🗡️","🛡️","🎯"];
 
 const FORUMS_INIT = [
   {
@@ -97,12 +98,17 @@ function App() {
     const saved = localStorage.getItem("freezone_pseudo");
     return saved ? JSON.parse(saved) : {};
   });
+  const [avatars, setAvatars] = useState(() => {
+    const saved = localStorage.getItem("freezone_avatars");
+    return saved ? JSON.parse(saved) : {};
+  });
   const [membres, setMembres] = useState(() => {
     const saved = localStorage.getItem("freezone_membres");
     return saved ? JSON.parse(saved) : [];
   });
   const [showPseudoModal, setShowPseudoModal] = useState(false);
   const [newPseudo, setNewPseudo] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState("🦊");
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => { localStorage.setItem("freezone_forums", JSON.stringify(forums)); }, [forums]);
@@ -113,6 +119,7 @@ function App() {
   useEffect(() => { localStorage.setItem("freezone_likes", JSON.stringify(likes)); }, [likes]);
   useEffect(() => { localStorage.setItem("freezone_messages", JSON.stringify(messages)); }, [messages]);
   useEffect(() => { localStorage.setItem("freezone_pseudo", JSON.stringify(pseudo)); }, [pseudo]);
+  useEffect(() => { localStorage.setItem("freezone_avatars", JSON.stringify(avatars)); }, [avatars]);
   useEffect(() => { localStorage.setItem("freezone_membres", JSON.stringify(membres)); }, [membres]);
 
   const addToast = (icon, title, msg, type = "info") => {
@@ -128,6 +135,8 @@ function App() {
     setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t));
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
   };
+
+  const getAvatar = (addr) => avatars[addr] || "🦊";
 
   const toggleLike = (key) => {
     if (!account) { alert("Connectez MetaMask pour liker !"); return; }
@@ -220,6 +229,7 @@ function App() {
     await verifierAbonnement(addr, provider);
     const shortA = `${addr.slice(0,6)}...${addr.slice(-4)}`;
     const savedPseudos = JSON.parse(localStorage.getItem("freezone_pseudo") || "{}");
+    const savedAvatars = JSON.parse(localStorage.getItem("freezone_avatars") || "{}");
     const savedMembres = JSON.parse(localStorage.getItem("freezone_membres") || "[]");
     const existing = savedMembres.find(m => m.address === shortA);
     if (existing) {
@@ -227,26 +237,29 @@ function App() {
       setMembres(updated);
       localStorage.setItem("freezone_membres", JSON.stringify(updated));
     } else {
-      const newM = { address: shortA, pseudo: savedPseudos[shortA] || "", lastSeen: Date.now() };
+      const newM = { address: shortA, pseudo: savedPseudos[shortA] || "", avatar: savedAvatars[shortA] || "🦊", lastSeen: Date.now() };
       const updated = [...savedMembres, newM];
       setMembres(updated);
       localStorage.setItem("freezone_membres", JSON.stringify(updated));
     }
+    if (savedAvatars[shortA]) setSelectedAvatar(savedAvatars[shortA]);
     if (!savedPseudos[shortA]) setShowPseudoModal(true);
     if ("Notification" in window) Notification.requestPermission();
-    addToast("🦊", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
+    addToast(savedAvatars[shortA] || "🦊", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
   };
 
   const savePseudo = () => {
     if (!newPseudo.trim()) { alert("Entrez un pseudo !"); return; }
     const shortA = shortAddr(account);
     const updatedPseudo = { ...pseudo, [shortA]: newPseudo.trim() };
+    const updatedAvatars = { ...avatars, [shortA]: selectedAvatar };
     setPseudo(updatedPseudo);
-    const updatedMembres = membres.map(m => m.address === shortA ? { ...m, pseudo: newPseudo.trim() } : m);
+    setAvatars(updatedAvatars);
+    const updatedMembres = membres.map(m => m.address === shortA ? { ...m, pseudo: newPseudo.trim(), avatar: selectedAvatar } : m);
     setMembres(updatedMembres);
     setShowPseudoModal(false);
     setNewPseudo("");
-    addToast("✅", "Pseudo enregistré !", `Vous êtes maintenant ${newPseudo.trim()}`, "success");
+    addToast(selectedAvatar, "Profil enregistré !", `Vous êtes maintenant ${newPseudo.trim()}`, "success");
   };
 
   const getDisplayName = (addr) => pseudo[addr] || addr;
@@ -359,8 +372,8 @@ function App() {
           )}
           {account ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span className="wallet-addr" style={{ cursor: "pointer" }} onClick={() => setShowPseudoModal(true)}>
-                🦊 {pseudo[shortAddr(account)] || shortAddr(account)}
+              <span className="wallet-addr" style={{ cursor: "pointer" }} onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setSelectedAvatar(avatars[shortAddr(account)] || "🦊"); setShowPseudoModal(true); }}>
+                {getAvatar(shortAddr(account))} {pseudo[shortAddr(account)] || shortAddr(account)}
               </span>
               {estAbonne ? (
                 <span className="badge-abonne">✅ Abonné</span>
@@ -417,7 +430,7 @@ function App() {
                 const unread = conv.msgs.filter(m => m.to === shortAddr(account) && !m.read).length;
                 return (
                   <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
-                    <div className="conv-avatar">🦊</div>
+                    <div className="conv-avatar">{getAvatar(other)}</div>
                     <div className="conv-info">
                       <div className="conv-addr">{getDisplayName(other)}</div>
                       <div className="conv-preview">{lastMsg ? lastMsg.content : "Démarrer la conversation..."}</div>
@@ -452,7 +465,9 @@ function App() {
         <div className="forum-page" style={{ padding: 0 }}>
           <div style={{ padding: "16px 24px", borderBottom: "1.5px solid #30363d", display: "flex", alignItems: "center", gap: 16 }}>
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage("messages")}>←</button>
-            <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>🦊</div>
+            <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 20 }}>
+              {getAvatar(activeConversation.participants.find(p => p !== shortAddr(account)))}
+            </div>
             <div style={{ fontWeight: 700 }}>{getDisplayName(activeConversation.participants.find(p => p !== shortAddr(account)))}</div>
             <div style={{ marginLeft: "auto", fontSize: 12, opacity: 0.5 }}>🔒 Chiffré</div>
           </div>
@@ -492,8 +507,8 @@ function App() {
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <h2 style={{ fontSize: 22 }}>🗂️ Annuaire des membres</h2>
-            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13 }}>
-              ✏️ Mon pseudo : <strong>{pseudo[shortAddr(account)] || "Non défini"}</strong>
+            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setSelectedAvatar(avatars[shortAddr(account)] || "🦊"); setShowPseudoModal(true); }} style={{ fontSize: 13 }}>
+              {getAvatar(shortAddr(account))} Mon profil : <strong>{pseudo[shortAddr(account)] || "Non défini"}</strong>
             </button>
           </div>
           <div style={{ background: "#6366f111", border: "1.5px solid #6366f133", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13 }}>
@@ -508,7 +523,7 @@ function App() {
             <div className="annuaire-grid">
               {membres.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)).map((m, i) => (
                 <div key={i} className="membre-card">
-                  <div className="membre-avatar">🦊</div>
+                  <div className="membre-avatar">{m.avatar || getAvatar(m.address)}</div>
                   <div className="membre-info">
                     <div className="membre-pseudo">{m.pseudo || m.address}</div>
                     <div className="membre-addr">{m.address}</div>
@@ -546,13 +561,13 @@ function App() {
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ borderRadius: 20, padding: 36, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1", textAlign: "center" }}>
-            <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
+            <div style={{ fontSize: 72, marginBottom: 12 }}>{getAvatar(shortAddr(account))}</div>
             <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4, color: "#6366f1" }}>
               {pseudo[shortAddr(account)] || shortAddr(account)}
             </div>
             <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 16, fontFamily: "monospace" }}>{account}</div>
-            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13, marginBottom: 16 }}>
-              ✏️ Changer le pseudo
+            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setSelectedAvatar(avatars[shortAddr(account)] || "🦊"); setShowPseudoModal(true); }} style={{ fontSize: 13, marginBottom: 16 }}>
+              ✏️ Modifier le profil
             </button>
             <br/>
             {estAbonne ? (
@@ -739,7 +754,10 @@ function App() {
           <h3 style={{ marginBottom: 16, opacity: 0.7 }}>💬 {activeTopic.replies.length} réponse{activeTopic.replies.length !== 1 ? "s" : ""}</h3>
           {activeTopic.replies.map(r => (
             <div key={r.id} style={{ borderRadius: 12, padding: "16px 20px", marginBottom: 12, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
-              <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 8 }}><strong>{r.author}</strong> · {r.date}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 22 }}>{getAvatar(r.author)}</span>
+                <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}><strong>{pseudo[r.author] || r.author}</strong> · {r.date}</p>
+              </div>
               <p style={{ fontSize: 15, lineHeight: 1.6 }}>{r.content}</p>
               <button className={`like-btn ${getLike(`reply_${r.id}`).hasLiked ? "liked" : ""}`} style={{ marginTop: 8 }} onClick={() => toggleLike(`reply_${r.id}`)}>
                 ❤️ {getLike(`reply_${r.id}`).count || "J'aime"}
@@ -772,13 +790,21 @@ function App() {
         ))}
       </div>
 
-      {/* MODAL PSEUDO */}
+      {/* MODAL PSEUDO + AVATAR */}
       {showPseudoModal && (
         <div className="pseudo-modal-overlay">
-          <div className="pseudo-modal">
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🦊</div>
-            <h2>Choisissez votre pseudo</h2>
-            <p>Il sera visible dans l'annuaire et la messagerie.<br/>Vous pourrez le changer à tout moment.</p>
+          <div className="pseudo-modal" style={{ width: 480 }}>
+            <div style={{ fontSize: 56, marginBottom: 12 }}>{selectedAvatar}</div>
+            <h2>Votre profil</h2>
+            <p>Choisissez un avatar et un pseudo visibles par tous.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+              {AVATARS.map(a => (
+                <button key={a} onClick={() => setSelectedAvatar(a)}
+                  style={{ fontSize: 24, padding: "6px 10px", borderRadius: 10, border: `2px solid ${selectedAvatar === a ? "#6366f1" : "#30363d"}`, background: selectedAvatar === a ? "#6366f122" : "transparent", cursor: "pointer", transition: "all 0.15s", transform: selectedAvatar === a ? "scale(1.2)" : "scale(1)" }}>
+                  {a}
+                </button>
+              ))}
+            </div>
             <input
               className="pseudo-input"
               value={newPseudo}
