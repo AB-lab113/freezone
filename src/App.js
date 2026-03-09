@@ -552,7 +552,7 @@ function App() {
                     {m.address !== shortAddr(account) && (
                       <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }}
                         onClick={() => {
-                          const key = [shortAddr(account), m.address].sort().join("___");
+                          const key = getConvKey(shortAddr(account), m.address);
                           const existing = messages.find(c => c.key === key);
                           if (existing) { setActiveConversation(existing); }
                           else {
