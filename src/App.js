@@ -1,11 +1,37 @@
 import './App.css';
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
+import { createAppKit } from '@reown/appkit/react';
+import { EthersAdapter } from '@reown/appkit-adapter-ethers';
+import { sepolia } from '@reown/appkit/networks';
+import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import ForumAboABI from "./ForumAbo.json";
 
 const CONTRACT_ADDRESS = "0x0cB2704923F4f3AdD852A087374366C030a7905c";
 const TOPICS_PAR_PAGE = 5;
 const AVATARS = ["🦊","🦈","🐺","🦁","🐯","🦋","🔥","⚡","👾","🤖","💀","🎭","🐉","🦅","🌙","⭐","💎","🗡️","🛡️","🎯"];
+
+const PROJECT_ID = "d65a475ce4a23ba152de3dc5a8e3639b";
+
+createAppKit({
+  adapters: [new EthersAdapter()],
+  networks: [sepolia],
+  projectId: PROJECT_ID,
+  metadata: {
+    name: "FreeZone",
+    description: "Forum décentralisé, libre et privé",
+    url: "https://freezone-kappa.vercel.app",
+    icons: ["https://freezone-kappa.vercel.app/favicon.ico"]
+  },
+  themeMode: "dark",
+  themeVariables: {
+    "--w3m-accent": "#6366f1",
+    "--w3m-border-radius-master": "8px",
+    "--w3m-font-family": "Inter, sans-serif",
+  }
+});
+
+const shortAddr = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : "";
 
 const FORUMS_INIT = [
   {
@@ -56,11 +82,14 @@ const FORUMS_INIT = [
 ];
 
 function App() {
+  const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider('eip155');
+  const account = isConnected ? address : null;
+
   const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("freezone_dark");
     return saved !== null ? JSON.parse(saved) : true;
   });
-  const [account, setAccount] = useState(null);
   const [estAbonne, setEstAbonne] = useState(false);
   const [loadingAbo, setLoadingAbo] = useState(false);
   const [expiration, setExpiration] = useState(null);
@@ -122,6 +151,44 @@ function App() {
   useEffect(() => { localStorage.setItem("freezone_avatars", JSON.stringify(avatars)); }, [avatars]);
   useEffect(() => { localStorage.setItem("freezone_membres", JSON.stringify(membres)); }, [membres]);
 
+  useEffect(() => {
+    if (!isConnected || !address || !walletProvider) {
+      if (!isConnected) { setEstAbonne(false); setExpiration(null); }
+      return;
+    }
+    const init = async () => {
+      try {
+        const provider = new ethers.BrowserProvider(walletProvider);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
+        const abonne = await contract.estAbonne(address);
+        setEstAbonne(abonne);
+        const exp = await contract.abonnements(address);
+        if (exp > 0) setExpiration(new Date(Number(exp) * 1000));
+        const prix = await contract.getPrixEnWei();
+        setPrixETH(prix);
+        const shortA = shortAddr(address);
+        const savedPseudos = JSON.parse(localStorage.getItem("freezone_pseudo") || "{}");
+        const savedAvatars = JSON.parse(localStorage.getItem("freezone_avatars") || "{}");
+        const savedMembres = JSON.parse(localStorage.getItem("freezone_membres") || "[]");
+        const existing = savedMembres.find(m => m.address === shortA);
+        if (existing) {
+          const updated = savedMembres.map(m => m.address === shortA ? { ...m, lastSeen: Date.now() } : m);
+          setMembres(updated);
+          localStorage.setItem("freezone_membres", JSON.stringify(updated));
+        } else {
+          const newM = { address: shortA, pseudo: savedPseudos[shortA] || "", avatar: savedAvatars[shortA] || "🦊", lastSeen: Date.now() };
+          const updated = [...savedMembres, newM];
+          setMembres(updated);
+          localStorage.setItem("freezone_membres", JSON.stringify(updated));
+        }
+        if (savedAvatars[shortA]) setSelectedAvatar(savedAvatars[shortA]);
+        if (!savedPseudos[shortA]) setShowPseudoModal(true);
+        addToast(savedAvatars[shortA] || "🦊", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
+      } catch (e) { console.error("Erreur init wallet:", e); }
+    };
+    init();
+  }, [isConnected, address, walletProvider]);
+
   const addToast = (icon, title, msg, type = "info") => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, icon, title, msg, type }]);
@@ -130,7 +197,6 @@ function App() {
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
     }, 3500);
   };
-
   const removeToast = (id) => {
     setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t));
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
@@ -139,7 +205,7 @@ function App() {
   const getAvatar = (addr) => avatars[addr] || "🦊";
 
   const toggleLike = (key) => {
-    if (!account) { alert("Connectez MetaMask pour liker !"); return; }
+    if (!account) { alert("Connectez votre wallet pour liker !"); return; }
     if (!estAbonne) { alert("⚠️ Abonnement requis pour liker !"); return; }
     const current = likes[key] || { count: 0, likedBy: [] };
     const hasLiked = current.likedBy.includes(account);
@@ -199,53 +265,22 @@ function App() {
 
   const unreadCount = account ? messages.reduce((total, conv) => total + conv.msgs.filter(m => m.to === shortAddr(account) && !m.read).length, 0) : 0;
 
-  const fetchPrix = async (prov) => {
+  const sAbonner = async () => {
+    if (!isConnected || !walletProvider) { alert("Connectez votre wallet !"); return; }
     try {
-      const provider = prov || new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
-      const prix = await contract.getPrixEnWei();
-      setPrixETH(prix); return prix;
-    } catch (e) { console.error("Erreur prix:", e); return null; }
-  };
-
-  const verifierAbonnement = async (addr, prov) => {
-    try {
-      const provider = prov || new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
-      const abonne = await contract.estAbonne(addr);
-      setEstAbonne(abonne);
-      const exp = await contract.abonnements(addr);
+      setLoadingAbo(true);
+      const provider = new ethers.BrowserProvider(walletProvider);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer);
+      const prixWei = await contract.getPrixEnWei();
+      const tx = await contract.sAbonner({ value: prixWei });
+      await tx.wait();
+      setEstAbonne(true);
+      const exp = await contract.abonnements(account);
       if (exp > 0) setExpiration(new Date(Number(exp) * 1000));
-      await fetchPrix(provider);
-    } catch (e) { console.error("Erreur abonnement:", e); }
-  };
-
-  const connectWallet = async () => {
-    if (!window.ethereum?.isMetaMask) { alert("Installez MetaMask !"); return; }
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const accounts = await provider.send("eth_requestAccounts", []);
-    const addr = accounts[0];
-    setAccount(addr);
-    await verifierAbonnement(addr, provider);
-    const shortA = `${addr.slice(0,6)}...${addr.slice(-4)}`;
-    const savedPseudos = JSON.parse(localStorage.getItem("freezone_pseudo") || "{}");
-    const savedAvatars = JSON.parse(localStorage.getItem("freezone_avatars") || "{}");
-    const savedMembres = JSON.parse(localStorage.getItem("freezone_membres") || "[]");
-    const existing = savedMembres.find(m => m.address === shortA);
-    if (existing) {
-      const updated = savedMembres.map(m => m.address === shortA ? { ...m, lastSeen: Date.now() } : m);
-      setMembres(updated);
-      localStorage.setItem("freezone_membres", JSON.stringify(updated));
-    } else {
-      const newM = { address: shortA, pseudo: savedPseudos[shortA] || "", avatar: savedAvatars[shortA] || "🦊", lastSeen: Date.now() };
-      const updated = [...savedMembres, newM];
-      setMembres(updated);
-      localStorage.setItem("freezone_membres", JSON.stringify(updated));
-    }
-    if (savedAvatars[shortA]) setSelectedAvatar(savedAvatars[shortA]);
-    if (!savedPseudos[shortA]) setShowPseudoModal(true);
-    if ("Notification" in window) Notification.requestPermission();
-    addToast(savedAvatars[shortA] || "🦊", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
+      addToast("✅", "Abonnement activé !", "30 jours d'accès complet à FreeZone", "success");
+    } catch (e) { alert("❌ Erreur : " + e.message); }
+    finally { setLoadingAbo(false); }
   };
 
   const savePseudo = () => {
@@ -265,32 +300,15 @@ function App() {
   const getDisplayName = (addr) => pseudo[addr] || addr;
   const isOnline = (lastSeen) => lastSeen && (Date.now() - lastSeen) < 30 * 60 * 1000;
 
-  const sAbonner = async () => {
-    if (!account) { alert("Connectez MetaMask !"); return; }
-    try {
-      setLoadingAbo(true);
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer);
-      const prixWei = await contract.getPrixEnWei();
-      const tx = await contract.sAbonner({ value: prixWei });
-      await tx.wait();
-      setEstAbonne(true);
-      await verifierAbonnement(account);
-      addToast("✅", "Abonnement activé !", "30 jours d'accès complet à FreeZone", "success");
-    } catch (e) { alert("❌ Erreur : " + e.message); }
-    finally { setLoadingAbo(false); }
-  };
-
   const openForum = (forum) => { setActiveForum(forum); setRechercheTopic(""); setCurrentPage(1); setSortBy("date"); setPage("forum"); };
   const openTopic = (topic) => { setActiveTopic(topic); setPage("topic"); };
   const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); setRecherche(""); };
   const goForum = () => { setPage("forum"); setActiveTopic(null); };
-  const shortAddr = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : "";
   const prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : "...";
+  const joursRestants = expiration ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24))) : 0;
 
   const creerSalon = () => {
-    if (!account) { alert("Connectez MetaMask !"); return; }
+    if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("⚠️ Abonnement requis !"); return; }
     if (!newSalon.name.trim()) { alert("Donnez un nom !"); return; }
     const salon = { id: newSalon.name.toLowerCase().replace(/\s+/g, "-"), emoji: newSalon.emoji, name: newSalon.name, description: newSalon.description || "Nouveau salon", topics: [] };
@@ -301,7 +319,7 @@ function App() {
   };
 
   const creerTopic = () => {
-    if (!account) { alert("Connectez MetaMask !"); return; }
+    if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("⚠️ Abonnement requis !"); return; }
     if (!newTopic.title.trim()) { alert("Donnez un titre !"); return; }
     const topic = { id: Date.now(), title: newTopic.title, content: newTopic.content, author: shortAddr(account), replies: [], date: new Date().toLocaleDateString("fr-FR") };
@@ -314,7 +332,7 @@ function App() {
   };
 
   const posterReponse = () => {
-    if (!account) { alert("Connectez MetaMask !"); return; }
+    if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("⚠️ Abonnement requis !"); return; }
     if (!newReply.trim()) { alert("Écrivez un message !"); return; }
     const reply = { id: Date.now(), author: shortAddr(account), content: newReply, date: new Date().toLocaleDateString("fr-FR") };
@@ -326,8 +344,6 @@ function App() {
     setNewReply("");
     addToast("💬", "Réponse postée !", "Votre message a été publié", "success");
   };
-
-  const joursRestants = expiration ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24))) : 0;
 
   const inputStyle = {
     display: "block", width: "100%", padding: "10px 14px", borderRadius: 8,
@@ -361,7 +377,7 @@ function App() {
               <button className="btn btn-ghost" onClick={() => setPage("messages")} style={{ position: "relative", fontSize: 16 }}>
                 📩
                 {unreadCount > 0 && (
-                  <span className="badge-pulse" style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                  <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
                     {unreadCount}
                   </span>
                 )}
@@ -382,9 +398,10 @@ function App() {
                   {loadingAbo ? <><span className="spinner"/>Transaction...</> : `🔓 S'abonner ~${prixEnETH} ETH`}
                 </button>
               )}
+              <appkit-button size="sm" />
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={connectWallet}>🦊 Connecter</button>
+            <appkit-button label="🔌 Connecter un wallet" size="sm" />
           )}
         </div>
       </header>
@@ -766,7 +783,7 @@ function App() {
           ))}
           <div style={{ borderRadius: 14, padding: 24, marginTop: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid", borderColor: dark ? "#30363d" : "#e2e8f0" }}>
             <h3 style={{ marginBottom: 16 }}>✍️ Votre réponse</h3>
-            {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>⚠️ Connectez MetaMask pour répondre</p>}
+            {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>⚠️ Connectez votre wallet pour répondre</p>}
             {account && !estAbonne && <p style={{ color: "#f59e0b", marginBottom: 12, fontSize: 14 }}>⚠️ Abonnez-vous pour répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4} style={{ ...inputStyle, resize: "vertical" }} disabled={!estAbonne} />
             <button className="btn btn-primary" onClick={posterReponse} style={{ padding: "12px 28px" }} disabled={!estAbonne || !account}>
@@ -776,7 +793,7 @@ function App() {
         </div>
       )}
 
-      {/* TOAST NOTIFICATIONS */}
+      {/* TOASTS */}
       <div className="toast-container">
         {toasts.map(t => (
           <div key={t.id} className={`toast ${t.type} ${t.closing ? "closing" : ""}`}>
@@ -805,15 +822,7 @@ function App() {
                 </button>
               ))}
             </div>
-            <input
-              className="pseudo-input"
-              value={newPseudo}
-              onChange={e => setNewPseudo(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && savePseudo()}
-              placeholder="Votre pseudo..."
-              maxLength={20}
-              autoFocus
-            />
+            <input className="pseudo-input" value={newPseudo} onChange={e => setNewPseudo(e.target.value)} onKeyDown={e => e.key === "Enter" && savePseudo()} placeholder="Votre pseudo..." maxLength={20} autoFocus />
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button className="btn btn-primary" onClick={savePseudo} style={{ padding: "10px 28px" }}>✅ Valider</button>
               <button className="btn btn-ghost" onClick={() => setShowPseudoModal(false)}>Plus tard</button>
