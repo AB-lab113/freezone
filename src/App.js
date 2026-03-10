@@ -285,15 +285,30 @@ function App() {
     } catch (e) { alert("❌ " + e.message); }
   };
 
-  // 📎 Image dans XMTP
-  const handleXmtpImage = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => { envoyerMessageXMTP(ev.target.result); };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+// 📎 Image dans XMTP — avec compression
+const handleXmtpImage = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Compression via canvas avant envoi XMTP
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    const MAX = 600; // px max
+    let w = img.width, h = img.height;
+    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+    if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    const compressed = canvas.toDataURL("image/jpeg", 0.6); // qualité 60%
+    URL.revokeObjectURL(objectUrl);
+    envoyerMessageXMTP(compressed);
   };
+  img.src = objectUrl;
+  e.target.value = "";
+};
 
   // 📎 Image dans réponse forum
   const handleReplyImage = e => {
@@ -571,7 +586,23 @@ function App() {
             {!estAbonne && <p style={{ color: "#f59e0b", fontSize: 14, margin: 0 }}>Abonnement requis pour envoyer</p>}
             {/* 📎 input caché */}
             <input type="file" accept="image/*" ref={imageInputRef} style={{ display: "none" }} onChange={handleXmtpImage} />
-            <button onClick={() => imageInputRef.current?.click()} disabled={!estAbonne} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "0 8px", opacity: estAbonne ? 1 : 0.4 }} title="Envoyer une image">📎</button>
+            <button
+  onClick={() => imageInputRef.current?.click()}
+  disabled={!estAbonne}
+  title="Envoyer une image"
+  style={{
+    background: "#6366f122",
+    border: "1.5px solid #6366f144",
+    borderRadius: 10,
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "8px 10px",
+    opacity: estAbonne ? 1 : 0.4,
+    transition: "all 0.2s",
+    flexShrink: 0
+  }}
+>📎</button>
+
             <textarea
               className="message-input" rows={1} value={newMessage}
               onChange={e => setNewMessage(e.target.value)}
