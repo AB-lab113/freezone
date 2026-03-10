@@ -26,32 +26,32 @@ const shortAddr = addr => addr ? addr.slice(0,6) + "..." + addr.slice(-4) : "";
 
 const FORUMS_INIT = [
   { id: "general", emoji: "💬", name: "Général", description: "Discussions libres, actualités du jour", topics: [
-    { id: 1, title: "Bienvenue sur Free Zone ! Présentez-vous 👋", author: "Admin", replies: [
+    { id: 1, title: "Bienvenue sur Free Zone ! Présentez-vous 👋", author: "Admin", pinned: true, replies: [
       { id: 1, author: "0xA1B2...C3D4", content: "Bonjour tout le monde !", date: "01/03/2026" },
       { id: 2, author: "0xE5F6...G7H8", content: "Ravi d'être ici !", date: "01/03/2026" }
     ], date: "01/03/2026" },
-    { id: 2, title: "Les règles de la communauté Free Zone", author: "Admin", replies: [], date: "01/03/2026" },
-    { id: 3, title: "Que pensez-vous de la liberté d'expression en 2026 ?", author: "0xA1B2...C3D4", replies: [], date: "01/03/2026" }
+    { id: 2, title: "Les règles de la communauté Free Zone", author: "Admin", pinned: true, replies: [], date: "01/03/2026" },
+    { id: 3, title: "Que pensez-vous de la liberté d'expression en 2026 ?", author: "0xA1B2...C3D4", pinned: false, replies: [], date: "01/03/2026" }
   ]},
   { id: "crypto", emoji: "₿", name: "Crypto", description: "Bitcoin, Ethereum, DeFi, Web3", topics: [
-    { id: 1, title: "Bitcoin 100k — Analyse technique du marché", author: "0xF3E2...1A2B", replies: [], date: "28/02/2026" },
-    { id: 2, title: "DeFi vs Finance traditionnelle — Le débat", author: "0xC9D8...5E6F", replies: [], date: "27/02/2026" },
-    { id: 3, title: "Monero vs Zcash — Quelle crypto la plus privée ?", author: "0xB7A6...9C0D", replies: [], date: "01/03/2026" },
-    { id: 4, title: "Est-ce que l'Ethereum mainnet est toujours pertinent ?", author: "0xE5F4...3G4H", replies: [], date: "01/03/2026" }
+    { id: 1, title: "Bitcoin à 100k$ — Analyse technique du marché", author: "0xF3E2...1A2B", pinned: false, replies: [], date: "28/02/2026" },
+    { id: 2, title: "DeFi vs Finance traditionnelle — Le débat", author: "0xC9D8...5E6F", pinned: false, replies: [], date: "27/02/2026" },
+    { id: 3, title: "Monero vs Zcash — Quelle crypto la plus privée ?", author: "0xB7A6...9C0D", pinned: false, replies: [], date: "01/03/2026" },
+    { id: 4, title: "Est-ce que l'Ethereum mainnet est toujours pertinent ?", author: "0xE5F4...3G4H", pinned: false, replies: [], date: "01/03/2026" }
   ]},
   { id: "tech", emoji: "💻", name: "Tech", description: "Technologie, IA, logiciels, hardware", topics: [
-    { id: 1, title: "Les meilleures IA open-source en 2026", author: "0xD3C2...7I8J", replies: [], date: "01/03/2026" },
-    { id: 2, title: "Linux vs Windows — Quel OS pour la vie privée ?", author: "0xH1G0...5K6L", replies: [], date: "28/02/2026" },
-    { id: 3, title: "Projet : construire son propre nœud Ethereum", author: "0xJ9I8...3M4N", replies: [], date: "01/03/2026" }
+    { id: 1, title: "Les meilleures IA open-source en 2026", author: "0xD3C2...7I8J", pinned: false, replies: [], date: "01/03/2026" },
+    { id: 2, title: "Linux vs Windows — Quel OS pour la vie privée ?", author: "0xH1G0...5K6L", pinned: false, replies: [], date: "28/02/2026" },
+    { id: 3, title: "Projet : construire son propre nœud Ethereum", author: "0xJ9I8...3M4N", pinned: false, replies: [], date: "01/03/2026" }
   ]},
   { id: "politique", emoji: "🏛️", name: "Politique", description: "Débats politiques, géopolitique mondiale", topics: [
-    { id: 1, title: "Censure d'internet — Tour du monde des restrictions", author: "0xL7K6...1O2P", replies: [], date: "01/03/2026" },
-    { id: 2, title: "CBDC — monnaie numérique d'état, bonne ou mauvaise idée ?", author: "0xN5M4...9Q0R", replies: [], date: "27/02/2026" },
-    { id: 3, title: "Élections et réseaux sociaux — manipulation de l'opinion ?", author: "0xP3O2...7S8T", replies: [], date: "28/02/2026" }
+    { id: 1, title: "Censure d'internet — Tour du monde des restrictions", author: "0xL7K6...1O2P", pinned: false, replies: [], date: "01/03/2026" },
+    { id: 2, title: "CBDC — monnaie numérique d'état, bonne ou mauvaise idée ?", author: "0xN5M4...9Q0R", pinned: false, replies: [], date: "27/02/2026" },
+    { id: 3, title: "Élections et réseaux sociaux — manipulation de l'opinion ?", author: "0xP3O2...7S8T", pinned: false, replies: [], date: "28/02/2026" }
   ]},
   { id: "journaliste", emoji: "📰", name: "Journaliste", description: "Médias libres, investigations, presse indépendante", topics: [
-    { id: 1, title: "Comment publier anonymement en 2026 — Guide complet", author: "0xR1Q0...5U6V", replies: [], date: "01/03/2026" },
-    { id: 2, title: "Les outils du journaliste indépendant : Tor, Signal, etc.", author: "0xT9S8...3W4X", replies: [], date: "28/02/2026" }
+    { id: 1, title: "Comment publier anonymement en 2026 — Guide complet", author: "0xR1Q0...5U6V", pinned: false, replies: [], date: "01/03/2026" },
+    { id: 2, title: "Les outils du journaliste indépendant : Tor, Signal, etc.", author: "0xT9S8...3W4X", pinned: false, replies: [], date: "28/02/2026" }
   ]}
 ];
 
@@ -60,19 +60,13 @@ function App() {
   const { walletProvider } = useAppKitProvider("eip155");
   const account = isConnected ? address : null;
 
-  const [dark, setDark] = useState(() => {
-    const s = localStorage.getItem("freezone_dark");
-    return s !== null ? JSON.parse(s) : true;
-  });
+  const [dark, setDark] = useState(() => { const s = localStorage.getItem("freezone_dark"); return s !== null ? JSON.parse(s) : true; });
   const [estAbonne, setEstAbonne] = useState(false);
   const [loadingAbo, setLoadingAbo] = useState(false);
   const [expiration, setExpiration] = useState(null);
   const [prixETH, setPrixETH] = useState(null);
   const [page, setPage] = useState("home");
-  const [forums, setForums] = useState(() => {
-    const s = localStorage.getItem("freezone_forums");
-    return s ? JSON.parse(s) : FORUMS_INIT;
-  });
+  const [forums, setForums] = useState(() => { const s = localStorage.getItem("freezone_forums"); return s ? JSON.parse(s) : FORUMS_INIT; });
   const [activeForum, setActiveForum] = useState(null);
   const [activeTopic, setActiveTopic] = useState(null);
   const [showTranslate, setShowTranslate] = useState(false);
@@ -81,16 +75,19 @@ function App() {
   const [newSalon, setNewSalon] = useState({ emoji: "", name: "", description: "" });
   const [newTopic, setNewTopic] = useState({ title: "", content: "" });
   const [newReply, setNewReply] = useState("");
+  const [replyImage, setReplyImage] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [rechercheTopic, setRechercheTopic] = useState("");
+
+  // 🔍 Recherche globale
+  const [rechercheGlobale, setRechercheGlobale] = useState("");
+  const [showRechercheGlobale, setShowRechercheGlobale] = useState(false);
+
   const [sortBy, setSortBy] = useState("date");
   const [currentPage, setCurrentPage] = useState(1);
-  const [likes, setLikes] = useState(() => {
-    const s = localStorage.getItem("freezone_likes");
-    return s ? JSON.parse(s) : {};
-  });
+  const [likes, setLikes] = useState(() => { const s = localStorage.getItem("freezone_likes"); return s ? JSON.parse(s) : {}; });
 
-  // ─── XMTP V3 ───────────────────────────────────────────────
+  // XMTP V3
   const [xmtpClient, setXmtpClient] = useState(null);
   const [xmtpLoading, setXmtpLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -99,31 +96,23 @@ function App() {
   const [newMessage, setNewMessage] = useState("");
   const [newMessageTo, setNewMessageTo] = useState("");
   const [showNewConversation, setShowNewConversation] = useState(false);
+  // 🔔 Stream ref + unread
   const streamRef = useRef(null);
-  // ────────────────────────────────────────────────────────────
+  const [xmtpUnread, setXmtpUnread] = useState(0);
+  // 📎 Image input ref
+  const imageInputRef = useRef(null);
+  const replyImageRef = useRef(null);
 
-  const [pseudo, setPseudo] = useState(() => {
-    const s = localStorage.getItem("freezone_pseudo");
-    return s ? JSON.parse(s) : {};
-  });
-  const [avatars, setAvatars] = useState(() => {
-    const s = localStorage.getItem("freezone_avatars");
-    return s ? JSON.parse(s) : {};
-  });
-  const [membres, setMembres] = useState(() => {
-    const s = localStorage.getItem("freezone_membres");
-    return s ? JSON.parse(s) : [];
-  });
+  const [pseudo, setPseudo] = useState(() => { const s = localStorage.getItem("freezone_pseudo"); return s ? JSON.parse(s) : {}; });
+  const [avatars, setAvatars] = useState(() => { const s = localStorage.getItem("freezone_avatars"); return s ? JSON.parse(s) : {}; });
+  const [membres, setMembres] = useState(() => { const s = localStorage.getItem("freezone_membres"); return s ? JSON.parse(s) : []; });
   const [showPseudoModal, setShowPseudoModal] = useState(false);
   const [newPseudo, setNewPseudo] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState("");
   const [toasts, setToasts] = useState([]);
 
   useEffect(() => { localStorage.setItem("freezone_forums", JSON.stringify(forums)); }, [forums]);
-  useEffect(() => {
-    localStorage.setItem("freezone_dark", JSON.stringify(dark));
-    document.body.className = dark ? "dark" : "light";
-  }, [dark]);
+  useEffect(() => { localStorage.setItem("freezone_dark", JSON.stringify(dark)); document.body.className = dark ? "dark" : "light"; }, [dark]);
   useEffect(() => { localStorage.setItem("freezone_likes", JSON.stringify(likes)); }, [likes]);
   useEffect(() => { localStorage.setItem("freezone_pseudo", JSON.stringify(pseudo)); }, [pseudo]);
   useEffect(() => { localStorage.setItem("freezone_avatars", JSON.stringify(avatars)); }, [avatars]);
@@ -132,23 +121,19 @@ function App() {
   // ─── Init wallet + contrat + XMTP ──────────────────────────
   useEffect(() => {
     if (!isConnected || !address || !walletProvider) {
-      if (!isConnected) { setEstAbonne(false); setExpiration(null); setXmtpClient(null); setConversations([]); }
+      if (!isConnected) { setEstAbonne(false); setExpiration(null); setXmtpClient(null); setConversations([]); setXmtpUnread(0); }
       return;
     }
     const init = async () => {
       try {
         const provider = new ethers.BrowserProvider(walletProvider);
         const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider);
-
-        // Abonnement
         const abonne = await contract.estAbonne(address);
         setEstAbonne(abonne);
         const exp = await contract.abonnements(address);
         if (exp > 0) setExpiration(new Date(Number(exp) * 1000));
         const prix = await contract.getPrixEnWei();
         setPrixETH(prix);
-
-        // Membres
         const shortA = shortAddr(address);
         const savedPseudos = JSON.parse(localStorage.getItem("freezone_pseudo") || "{}");
         const savedAvatars = JSON.parse(localStorage.getItem("freezone_avatars") || "{}");
@@ -176,21 +161,42 @@ function App() {
           const convList = await client.conversations.list();
           setConversations(convList);
           addToast("🔒", "XMTP actif !", "Messagerie E2E chiffrée", "success");
+          // 🔔 Stream notifications temps réel
+          startXmtpStream(client);
         } catch (e) {
           console.error("XMTP:", e);
-          addToast("⚠️", "XMTP non connecté", e.message?.slice(0, 60), "info");
         } finally {
           setXmtpLoading(false);
         }
-
       } catch (e) { console.error("Erreur init wallet:", e); }
     };
     init();
+    return () => { if (streamRef.current) { streamRef.current = null; } };
   }, [isConnected, address, walletProvider]); // eslint-disable-line
 
-  // ─── Toasts ────────────────────────────────────────────────
+  // ─── 🔔 Stream XMTP temps réel ─────────────────────────────
+  const startXmtpStream = async (client) => {
+    if (streamRef.current) return;
+    streamRef.current = true;
+    try {
+      const stream = await client.conversations.streamAllMessages();
+      for await (const msg of stream) {
+        if (!streamRef.current) break;
+        if (msg.senderInboxId !== client.inboxId) {
+          setXmtpUnread(prev => prev + 1);
+          const content = typeof msg.content === "string" ? msg.content.slice(0, 50) : "📎 Image reçue";
+          addToast("💬", "Nouveau message !", content, "info");
+          await client.conversations.sync();
+          const convList = await client.conversations.list();
+          setConversations(convList);
+        }
+      }
+    } catch (e) { console.error("Stream XMTP:", e); }
+  };
+
+  // ─── Toasts ─────────────────────────────────────────────────
   const addToast = (icon, title, msg, type = "info") => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, icon, title, msg, type }]);
     setTimeout(() => setToasts(prev => prev.map(t => t.id === id ? { ...t, closing: true } : t)), 3500);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3800);
@@ -200,32 +206,61 @@ function App() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
   };
 
-  // ─── Helpers ───────────────────────────────────────────────
   const getAvatar = addr => avatars[addr] || "";
   const getDisplayName = addr => pseudo[addr] || addr;
   const isOnline = lastSeen => lastSeen && (Date.now() - lastSeen < 30 * 60 * 1000);
 
-  // ─── Likes ─────────────────────────────────────────────────
+  // ─── Likes ──────────────────────────────────────────────────
   const toggleLike = key => {
-    if (!account) { alert("Connectez votre wallet pour liker !"); return; }
-    if (!estAbonne) { alert("Abonnement requis pour liker !"); return; }
+    if (!account) { alert("Connectez votre wallet !"); return; }
+    if (!estAbonne) { alert("Abonnement requis !"); return; }
     const current = likes[key] || { count: 0, likedBy: [] };
     const hasLiked = current.likedBy.includes(account);
     setLikes({ ...likes, [key]: { count: hasLiked ? current.count - 1 : current.count + 1, likedBy: hasLiked ? current.likedBy.filter(a => a !== account) : [...current.likedBy, account] } });
   };
   const getLike = key => { const l = likes[key] || { count: 0, likedBy: [] }; return { count: l.count, hasLiked: l.likedBy.includes(account) }; };
 
-  // ─── Tri topics ────────────────────────────────────────────
-  const sortTopics = (topics, forumId) => {
-    const sorted = [...topics];
-    if (sortBy === "popular") return sorted.sort((a, b) => (likes[`${forumId}_${b.id}`]?.count || 0) - (likes[`${forumId}_${a.id}`]?.count || 0));
-    if (sortBy === "replies") return sorted.sort((a, b) => b.replies.length - a.replies.length);
-    return sorted.sort((a, b) => b.id - a.id);
+  // ─── 📌 Épingler un topic ────────────────────────────────────
+  const togglePin = (forumId, topicId) => {
+    if (!account) { alert("Connectez votre wallet !"); return; }
+    if (!estAbonne) { alert("Abonnement requis !"); return; }
+    const updatedForums = forums.map(f => f.id === forumId
+      ? { ...f, topics: f.topics.map(t => t.id === topicId ? { ...t, pinned: !t.pinned } : t) }
+      : f
+    );
+    setForums(updatedForums);
+    setActiveForum(updatedForums.find(f => f.id === forumId));
+    if (activeTopic?.id === topicId) setActiveTopic(updatedForums.find(f => f.id === forumId)?.topics.find(t => t.id === topicId));
+    addToast("📌", "Topic épinglé !", "", "success");
   };
 
-  // ─── XMTP Fonctions ────────────────────────────────────────
+  // ─── Tri topics (épinglés en premier) ───────────────────────
+  const sortTopics = (topics, forumId) => {
+    const pinned = topics.filter(t => t.pinned);
+    const unpinned = topics.filter(t => !t.pinned);
+    const sortFn = (a, b) => {
+      if (sortBy === "popular") return (likes[`${forumId}_${b.id}`]?.count || 0) - (likes[`${forumId}_${a.id}`]?.count || 0);
+      if (sortBy === "replies") return b.replies.length - a.replies.length;
+      return b.id - a.id;
+    };
+    return [...pinned.sort(sortFn), ...unpinned.sort(sortFn)];
+  };
+
+  // ─── 🔍 Recherche globale ────────────────────────────────────
+  const resultatsGlobaux = rechercheGlobale.trim().length >= 2
+    ? forums.flatMap(f =>
+        f.topics.filter(t =>
+          t.title.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+          (t.content || "").toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+          t.author.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+          t.replies.some(r => r.content.toLowerCase().includes(rechercheGlobale.toLowerCase()))
+        ).map(t => ({ ...t, forumId: f.id, forumName: f.name, forumEmoji: f.emoji }))
+      )
+    : [];
+
+  // ─── XMTP Fonctions ─────────────────────────────────────────
   const demarrerConversationXMTP = async () => {
-    if (!xmtpClient) { alert("XMTP non connecté — reconnectez votre wallet !"); return; }
+    if (!xmtpClient) { alert("XMTP non connecté !"); return; }
     if (!newMessageTo.trim()) { alert("Entrez une adresse !"); return; }
     try {
       const dm = await xmtpClient.conversations.findOrCreateDm(newMessageTo.trim());
@@ -235,30 +270,50 @@ function App() {
       setShowNewConversation(false);
       setNewMessageTo("");
       setPage("conversation");
-    } catch (e) { alert("❌ Adresse invalide ou non enregistrée sur XMTP : " + e.message); }
+    } catch (e) { alert("❌ " + e.message); }
   };
 
-  const envoyerMessageXMTP = async () => {
-    if (!xmtpClient || !activeConversation || !newMessage.trim()) return;
+  const envoyerMessageXMTP = async (imageData = null) => {
+    if (!xmtpClient || !activeConversation) return;
+    const content = imageData || newMessage.trim();
+    if (!content) return;
     try {
-      await activeConversation.send(newMessage.trim());
+      await activeConversation.send(content);
       setNewMessage("");
       await activeConversation.sync();
       setXmtpMessages(await activeConversation.messages());
-    } catch (e) { alert("❌ Erreur envoi : " + e.message); }
+    } catch (e) { alert("❌ " + e.message); }
+  };
+
+  // 📎 Image dans XMTP
+  const handleXmtpImage = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { envoyerMessageXMTP(ev.target.result); };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  // 📎 Image dans réponse forum
+  const handleReplyImage = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setReplyImage(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const ouvrirConversationXMTP = async (conv) => {
     setActiveConversation(conv);
     await conv.sync();
     setXmtpMessages(await conv.messages());
-    if (streamRef.current) streamRef.current.return?.();
+    setXmtpUnread(0);
     setPage("conversation");
   };
 
-  const unreadCount = 0;
-
-  // ─── Abonnement ────────────────────────────────────────────
+  // ─── Abonnement ─────────────────────────────────────────────
   const sAbonner = async () => {
     if (!isConnected || !walletProvider) { alert("Connectez votre wallet !"); return; }
     try {
@@ -277,45 +332,48 @@ function App() {
     finally { setLoadingAbo(false); }
   };
 
-  // ─── Pseudo / Avatar ───────────────────────────────────────
+  // ─── Pseudo / Avatar ─────────────────────────────────────────
   const savePseudo = () => {
     if (!newPseudo.trim()) { alert("Entrez un pseudo !"); return; }
     const shortA = shortAddr(account);
     const updatedPseudo = { ...pseudo, [shortA]: newPseudo.trim() };
     const updatedAvatars = { ...avatars, [shortA]: selectedAvatar };
     setPseudo(updatedPseudo); setAvatars(updatedAvatars);
-    const updatedMembres = membres.map(m => m.address === shortA ? { ...m, pseudo: newPseudo.trim(), avatar: selectedAvatar } : m);
-    setMembres(updatedMembres);
+    setMembres(membres.map(m => m.address === shortA ? { ...m, pseudo: newPseudo.trim(), avatar: selectedAvatar } : m));
     setShowPseudoModal(false); setNewPseudo("");
-    addToast(selectedAvatar, "Profil enregistré !", `Vous êtes maintenant ${newPseudo.trim()}`, "success");
+    addToast(selectedAvatar, "Profil enregistré !", `Vous êtes ${newPseudo.trim()}`, "success");
   };
 
-  // ─── Navigation ────────────────────────────────────────────
+  // ─── Navigation ──────────────────────────────────────────────
   const openForum = forum => { setActiveForum(forum); setRechercheTopic(""); setCurrentPage(1); setSortBy("date"); setPage("forum"); };
-  const openTopic = topic => { setActiveTopic(topic); setPage("topic"); };
-  const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); setRecherche(""); };
+  const openTopic = (topic, forum = null) => {
+    if (forum) setActiveForum(forum);
+    setActiveTopic(topic);
+    setPage("topic");
+  };
+  const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); setRecherche(""); setRechercheGlobale(""); setShowRechercheGlobale(false); };
   const goForum = () => { setPage("forum"); setActiveTopic(null); };
 
   const prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : "...";
   const joursRestants = expiration ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24))) : 0;
 
-  // ─── Créer salon ───────────────────────────────────────────
+  // ─── Créer salon ─────────────────────────────────────────────
   const creerSalon = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
     if (!newSalon.name.trim()) { alert("Donnez un nom !"); return; }
     const salon = { id: newSalon.name.toLowerCase().replace(/\s+/g, "-"), emoji: newSalon.emoji, name: newSalon.name, description: newSalon.description || "Nouveau salon", topics: [] };
     setForums([...forums, salon]); setShowNewSalon(false);
-    addToast("🎉", "Salon créé !", `Le salon ${newSalon.name} est disponible`, "success");
+    addToast("🎉", "Salon créé !", newSalon.name, "success");
     setNewSalon({ emoji: "", name: "", description: "" });
   };
 
-  // ─── Créer topic ───────────────────────────────────────────
+  // ─── Créer topic ─────────────────────────────────────────────
   const creerTopic = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
     if (!newTopic.title.trim()) { alert("Donnez un titre !"); return; }
-    const topic = { id: Date.now(), title: newTopic.title, content: newTopic.content, author: shortAddr(account), replies: [], date: new Date().toLocaleDateString("fr-FR") };
+    const topic = { id: Date.now(), title: newTopic.title, content: newTopic.content, author: shortAddr(account), pinned: false, replies: [], date: new Date().toLocaleDateString("fr-FR") };
     const updatedForums = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f);
     setForums(updatedForums); setActiveForum(updatedForums.find(f => f.id === activeForum.id));
     setShowNewTopic(false);
@@ -323,17 +381,17 @@ function App() {
     setNewTopic({ title: "", content: "" });
   };
 
-  // ─── Poster réponse ────────────────────────────────────────
+  // ─── Poster réponse (avec image) ─────────────────────────────
   const posterReponse = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
-    if (!newReply.trim()) { alert("Écrivez un message !"); return; }
-    const reply = { id: Date.now(), author: shortAddr(account), content: newReply, date: new Date().toLocaleDateString("fr-FR") };
+    if (!newReply.trim() && !replyImage) { alert("Écrivez un message ou ajoutez une image !"); return; }
+    const reply = { id: Date.now(), author: shortAddr(account), content: newReply, image: replyImage || null, date: new Date().toLocaleDateString("fr-FR") };
     const updatedTopic = { ...activeTopic, replies: [...activeTopic.replies, reply] };
     const updatedForums = forums.map(f => f.id === activeForum.id ? { ...f, topics: f.topics.map(t => t.id === activeTopic.id ? updatedTopic : t) } : f);
     setForums(updatedForums); setActiveForum(updatedForums.find(f => f.id === activeForum.id)); setActiveTopic(updatedTopic);
-    setNewReply("");
-    addToast("💬", "Réponse postée !", "Votre message a été publié", "success");
+    setNewReply(""); setReplyImage(null);
+    addToast("💬", "Réponse postée !", "", "success");
   };
 
   const inputStyle = { display: "block", width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #30363d", background: dark ? "#0d1117" : "#f8f9ff", color: dark ? "#e6edf3" : "#1a1a2e", fontSize: 15, marginBottom: 16, marginTop: 6, boxSizing: "border-box", fontFamily: "inherit" };
@@ -344,18 +402,58 @@ function App() {
   const topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE);
   const forumsFiltered = forums.filter(f => f.name.toLowerCase().includes(recherche.toLowerCase()) || f.description.toLowerCase().includes(recherche.toLowerCase()));
 
+  // Helper bulle message (image ou texte)
+  const renderBubbleContent = (content) => {
+    if (typeof content === "string" && content.startsWith("data:image/")) {
+      return <img src={content} alt="img" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, display: "block" }} />;
+    }
+    return <span>{content}</span>;
+  };
+
   return (
     <div>
       {/* ══════════ HEADER ══════════ */}
       <header className="header">
         <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
         <div className="header-actions">
+          {/* 🔍 Recherche globale */}
+          <div style={{ position: "relative" }}>
+            <button className="btn btn-ghost" onClick={() => setShowRechercheGlobale(!showRechercheGlobale)} title="Recherche globale">🔍</button>
+            {showRechercheGlobale && (
+              <div style={{ position: "absolute", top: 44, right: 0, background: dark ? "#161b22" : "white", border: "1.5px solid #6366f1", borderRadius: 12, padding: 16, width: 360, zIndex: 999, boxShadow: "0 8px 32px #0006" }}>
+                <input
+                  autoFocus
+                  value={rechercheGlobale}
+                  onChange={e => setRechercheGlobale(e.target.value)}
+                  placeholder="Rechercher dans tous les forums..."
+                  style={{ ...inputStyle, marginBottom: 8, marginTop: 0 }}
+                />
+                {rechercheGlobale.trim().length >= 2 && (
+                  <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                    {resultatsGlobaux.length === 0
+                      ? <p style={{ opacity: 0.5, fontSize: 13, textAlign: "center", padding: 12 }}>Aucun résultat</p>
+                      : resultatsGlobaux.map((t, i) => (
+                          <div key={i} style={{ padding: "10px 12px", borderRadius: 8, cursor: "pointer", marginBottom: 6, background: dark ? "#0d1117" : "#f8f9ff", border: "1px solid #30363d" }}
+                            onClick={() => { const forum = forums.find(f => f.id === t.forumId); openTopic(t, forum); setShowRechercheGlobale(false); setRechercheGlobale(""); }}>
+                            <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>{t.forumEmoji} {t.forumName}</div>
+                            <div style={{ fontSize: 14, fontWeight: 600 }}>{t.pinned && "📌 "}{t.title}</div>
+                            <div style={{ fontSize: 12, opacity: 0.5 }}>par {t.author} · {t.replies.length} réponse{t.replies.length !== 1 ? "s" : ""}</div>
+                          </div>
+                        ))
+                    }
+                    <div style={{ fontSize: 12, opacity: 0.4, textAlign: "center", marginTop: 8 }}>{resultatsGlobaux.length} résultat{resultatsGlobaux.length !== 1 ? "s" : ""}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
           {account && (
-            <button className="btn btn-ghost" onClick={() => setPage("messages")} style={{ position: "relative", fontSize: 16 }}>
+            <button className="btn btn-ghost" onClick={() => { setXmtpUnread(0); setPage("messages"); }} style={{ position: "relative", fontSize: 16 }}>
               💬
-              {unreadCount > 0 && <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{unreadCount}</span>}
+              {xmtpUnread > 0 && <span style={{ position: "absolute", top: -4, right: -4, background: "#ef4444", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>{xmtpUnread}</span>}
             </button>
           )}
           {account && <button className="btn btn-ghost" onClick={() => setPage("annuaire")} style={{ fontSize: 16 }}>👥</button>}
@@ -379,7 +477,6 @@ function App() {
         </div>
       </header>
 
-      {/* Translate */}
       {showTranslate && (
         <div className="translate-panel">
           <p>Choisir une langue</p>
@@ -388,7 +485,6 @@ function App() {
         </div>
       )}
 
-      {/* Banner non-abonné */}
       {account && !estAbonne && !["profil","messages","conversation","annuaire"].includes(page) && (
         <div style={{ background: "linear-gradient(90deg,#f59e0b22,#6366f122)", border: "1.5px solid #f59e0b", borderRadius: 12, margin: "16px auto", maxWidth: 860, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14 }}><strong>Vous n'êtes pas abonné.</strong> Abonnez-vous pour ~2€/mois en ETH.</p>
@@ -406,38 +502,25 @@ function App() {
             <h2 style={{ fontSize: 22 }}>🔒 Messagerie XMTP E2E</h2>
             <button className="btn btn-primary" onClick={() => setShowNewConversation(true)}>✉️ Nouveau message</button>
           </div>
-
           {xmtpLoading && (
             <div style={{ background: "#6366f111", border: "1.5px solid #6366f1", borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13, display: "flex", alignItems: "center", gap: 10 }}>
-              <span className="spinner" style={{ borderTopColor: "#6366f1", borderColor: "#6366f133" }} />
-              Connexion au réseau XMTP... (signez dans MetaMask si demandé)
+              <span className="spinner" /> Connexion XMTP...
             </div>
           )}
           {xmtpClient && !xmtpLoading && (
             <div style={{ background: "#22c55e11", border: "1.5px solid #22c55e44", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13 }}>
-              🔒 Chiffrement MLS E2E actif — Messages stockés sur le réseau XMTP décentralisé
+              🔒 MLS E2E actif — 🔔 Notifications temps réel actives
             </div>
           )}
-          {!xmtpClient && !xmtpLoading && (
-            <div style={{ background: "#f59e0b11", border: "1.5px solid #f59e0b44", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13 }}>
-              ⚠️ XMTP non connecté — reconnectez votre wallet pour activer la messagerie
-            </div>
-          )}
-
           {conversations.length === 0 ? (
-            <div className="no-results">
-              <span>📭</span>
-              <p>Aucun message. Démarrez une conversation !</p>
-            </div>
+            <div className="no-results"><span>📭</span><p>Aucun message. Démarrez une conversation !</p></div>
           ) : (
             <div className="messages-list">
               {conversations.map((conv, i) => (
                 <div key={i} className="conversation-item" onClick={() => ouvrirConversationXMTP(conv)}>
                   <div className="conv-avatar">💬</div>
                   <div className="conv-info">
-                    <div className="conv-addr" style={{ fontFamily: "monospace", fontSize: 13 }}>
-                      {conv.peerInboxId ? conv.peerInboxId.slice(0, 10) + "..." : "Conversation"}
-                    </div>
+                    <div className="conv-addr" style={{ fontFamily: "monospace", fontSize: 13 }}>{conv.peerInboxId?.slice(0, 10)}...</div>
                     <div className="conv-preview">🔒 Message chiffré E2E</div>
                   </div>
                   <div style={{ fontSize: 10, opacity: 0.4 }}>XMTP</div>
@@ -445,17 +528,12 @@ function App() {
               ))}
             </div>
           )}
-
           {showNewConversation && (
             <div style={{ position: "fixed", inset: 0, background: "#0008", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999 }}>
               <div style={{ background: dark ? "#161b22" : "white", borderRadius: 16, padding: 32, width: 440, border: "1.5px solid #6366f1" }}>
                 <h2 style={{ marginBottom: 8, color: "#6366f1" }}>🔒 Nouveau message XMTP</h2>
-                <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 20 }}>
-                  Entrez l'adresse Ethereum <strong>complète</strong> du destinataire.<br />
-                  <span style={{ opacity: 0.5, fontSize: 12 }}>Le destinataire doit avoir activé XMTP au moins une fois.</span>
-                </p>
-                <label style={{ fontSize: 13, opacity: 0.7 }}>Adresse 0x...</label>
-                <input value={newMessageTo} onChange={e => setNewMessageTo(e.target.value)} style={inputStyle} placeholder="0xAbCd...1234 (adresse complète)" />
+                <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 20 }}>Adresse Ethereum complète du destinataire</p>
+                <input value={newMessageTo} onChange={e => setNewMessageTo(e.target.value)} style={inputStyle} placeholder="0xAbCd...1234" />
                 <div style={{ display: "flex", gap: 12 }}>
                   <button className="btn btn-primary" onClick={demarrerConversationXMTP} style={{ flex: 1 }}>🔒 Démarrer</button>
                   <button className="btn btn-ghost" onClick={() => setShowNewConversation(false)} style={{ flex: 1 }}>Annuler</button>
@@ -472,45 +550,36 @@ function App() {
           <div style={{ padding: "16px 24px", borderBottom: "1.5px solid #30363d", display: "flex", alignItems: "center", gap: 16 }}>
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage("messages")}>←</button>
             <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 20 }}>💬</div>
-            <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "monospace" }}>
-              {activeConversation.peerInboxId ? activeConversation.peerInboxId.slice(0, 12) + "..." : "Conversation"}
-            </div>
-            <div style={{ marginLeft: "auto", fontSize: 12, background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44", borderRadius: 20, padding: "3px 10px" }}>
-              🔒 E2E chiffré
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 13, fontFamily: "monospace" }}>{activeConversation.peerInboxId?.slice(0, 12)}...</div>
+            <div style={{ marginLeft: "auto", fontSize: 12, background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44", borderRadius: 20, padding: "3px 10px" }}>🔒 E2E</div>
           </div>
-
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: "auto" }}>
-            {xmtpMessages.length === 0 && (
-              <div style={{ textAlign: "center", opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>
-            )}
+            {xmtpMessages.length === 0 && <div style={{ textAlign: "center", opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
             {xmtpMessages.map((msg, i) => {
               const isSent = msg.senderInboxId === xmtpClient?.inboxId;
               return (
                 <div key={i} className={`bubble-wrapper ${isSent ? "sent" : "received"}`}>
-                  <div className={`bubble ${isSent ? "sent" : "received"}`}>
-                    {typeof msg.content === "string" ? msg.content : "📎 [Contenu non supporté]"}
-                  </div>
+                  <div className={`bubble ${isSent ? "sent" : "received"}`}>{renderBubbleContent(msg.content)}</div>
                   <div className="bubble-time">
-                    {msg.sentAtNs
-                      ? new Date(Number(msg.sentAtNs / 1000000n)).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                      : ""}
+                    {msg.sentAtNs ? new Date(Number(msg.sentAtNs / 1000000n)).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : ""}
                   </div>
                 </div>
               );
             })}
           </div>
-
           <div className="message-input-bar">
             {!estAbonne && <p style={{ color: "#f59e0b", fontSize: 14, margin: 0 }}>Abonnement requis pour envoyer</p>}
+            {/* 📎 input caché */}
+            <input type="file" accept="image/*" ref={imageInputRef} style={{ display: "none" }} onChange={handleXmtpImage} />
+            <button onClick={() => imageInputRef.current?.click()} disabled={!estAbonne} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "0 8px", opacity: estAbonne ? 1 : 0.4 }} title="Envoyer une image">📎</button>
             <textarea
               className="message-input" rows={1} value={newMessage}
               onChange={e => setNewMessage(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessageXMTP(); } }}
-              placeholder="✍️ Message chiffré E2E... Entrée pour envoyer"
+              placeholder="✍️ Message E2E... Entrée pour envoyer"
               disabled={!estAbonne}
             />
-            <button className="send-btn" onClick={envoyerMessageXMTP} disabled={!newMessage.trim() || !estAbonne}>➤</button>
+            <button className="send-btn" onClick={() => envoyerMessageXMTP()} disabled={!newMessage.trim() || !estAbonne}>➤</button>
           </div>
         </div>
       )}
@@ -528,35 +597,26 @@ function App() {
           <div style={{ background: "#6366f111", border: "1.5px solid #6366f133", borderRadius: 10, padding: "10px 16px", marginBottom: 20, fontSize: 13 }}>
             {membres.length} membre{membres.length > 1 ? "s" : ""} enregistré{membres.length > 1 ? "s" : ""}
           </div>
-          {membres.length === 0 ? (
-            <div className="no-results" style={{ textAlign: "center", padding: 40 }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>👻</div>
-              <p style={{ opacity: 0.5 }}>Aucun membre enregistré pour l'instant.</p>
-            </div>
-          ) : (
-            <div className="annuaire-grid">
-              {membres.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)).map((m, i) => (
-                <div key={i} className="membre-card">
-                  <div className="membre-avatar">{m.avatar || getAvatar(m.address)}</div>
-                  <div className="membre-info">
-                    <div className="membre-pseudo">{m.pseudo || m.address}</div>
-                    <div className="membre-addr">{m.address}</div>
+          {membres.length === 0
+            ? <div className="no-results"><span>👻</span><p>Aucun membre enregistré pour l'instant.</p></div>
+            : <div className="annuaire-grid">
+                {membres.sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)).map((m, i) => (
+                  <div key={i} className="membre-card">
+                    <div className="membre-avatar">{m.avatar || getAvatar(m.address)}</div>
+                    <div className="membre-info">
+                      <div className="membre-pseudo">{m.pseudo || m.address}</div>
+                      <div className="membre-addr">{m.address}</div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                      <span className={`badge-online ${isOnline(m.lastSeen) ? "online" : "offline"}`}>{isOnline(m.lastSeen) ? "En ligne" : "Hors ligne"}</span>
+                      {m.address !== shortAddr(account) && (
+                        <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }} onClick={() => setPage("messages")}>💬 Message</button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                    <span className={`badge-online ${isOnline(m.lastSeen) ? "online" : "offline"}`}>
-                      {isOnline(m.lastSeen) ? "En ligne" : "Hors ligne"}
-                    </span>
-                    {m.address !== shortAddr(account) && (
-                      <button className="btn btn-primary" style={{ fontSize: 12, padding: "4px 12px" }}
-                        onClick={() => { setPage("messages"); }}>
-                        💬 Message
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+          }
         </div>
       )}
 
@@ -568,19 +628,13 @@ function App() {
             <div style={{ fontSize: 72, marginBottom: 12 }}>{getAvatar(shortAddr(account))}</div>
             <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 4, color: "#6366f1" }}>{pseudo[shortAddr(account)] || shortAddr(account)}</div>
             <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 16, fontFamily: "monospace" }}>{account}</div>
-            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setSelectedAvatar(avatars[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13, marginBottom: 16 }}>
-              ✏️ Modifier le profil
-            </button><br />
+            <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo[shortAddr(account)] || ""); setSelectedAvatar(avatars[shortAddr(account)] || ""); setShowPseudoModal(true); }} style={{ fontSize: 13, marginBottom: 16 }}>✏️ Modifier le profil</button>
+            <br />
             {estAbonne
-              ? <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#22c55e22", border: "1.5px solid #22c55e", borderRadius: 20, padding: "8px 20px" }}>
-                  <span>✅</span><span style={{ color: "#22c55e", fontWeight: 700 }}>Abonné actif</span>
-                </div>
-              : <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f59e0b22", border: "1.5px solid #f59e0b", borderRadius: 20, padding: "8px 20px" }}>
-                  <span>⚠️</span><span style={{ color: "#f59e0b", fontWeight: 700 }}>Non abonné</span>
-                </div>
+              ? <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#22c55e22", border: "1.5px solid #22c55e", borderRadius: 20, padding: "8px 20px" }}><span>✅</span><span style={{ color: "#22c55e", fontWeight: 700 }}>Abonné actif</span></div>
+              : <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#f59e0b22", border: "1.5px solid #f59e0b", borderRadius: 20, padding: "8px 20px" }}><span>⚠️</span><span style={{ color: "#f59e0b", fontWeight: 700 }}>Non abonné</span></div>
             }
           </div>
-
           <div style={{ borderRadius: 16, padding: 20, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 4 }}>PRIX ABONNEMENT — Chainlink</div>
@@ -589,7 +643,6 @@ function App() {
             </div>
             <div style={{ fontSize: 40 }}>⛓️</div>
           </div>
-
           <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: `1.5px solid ${dark ? "#30363d" : "#e2e8f0"}` }}>
             <h3 style={{ marginBottom: 20 }}>Détails abonnement</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -616,7 +669,6 @@ function App() {
               </div>
             )}
           </div>
-
           <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: `1.5px solid ${dark ? "#30363d" : "#e2e8f0"}` }}>
             <h3 style={{ marginBottom: 20 }}>Mes statistiques</h3>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -633,7 +685,6 @@ function App() {
               ))}
             </div>
           </div>
-
           {!estAbonne && (
             <div style={{ textAlign: "center" }}>
               <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo} style={{ fontSize: 16, padding: "14px 36px" }}>
@@ -666,22 +717,24 @@ function App() {
           {forumsFiltered.length === 0
             ? <div className="no-results"><span>🔍</span><p>Aucun salon trouvé pour <strong>{recherche}</strong></p></div>
             : <div className="forums-grid">
-                {forumsFiltered.map(f => (
-                  <div key={f.id} className="forum-card" onClick={() => openForum(f)}>
-                    <div className="forum-emoji">{f.emoji}</div>
-                    <div className="forum-name">{f.name}</div>
-                    <div className="forum-desc">{f.description}</div>
-                    <div className="forum-meta">
-                      <span>{f.topics.length} topics</span>
-                      <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
+                {forumsFiltered.map(f => {
+                  const pinnedCount = f.topics.filter(t => t.pinned).length;
+                  return (
+                    <div key={f.id} className="forum-card" onClick={() => openForum(f)}>
+                      <div className="forum-emoji">{f.emoji}</div>
+                      <div className="forum-name">{f.name}</div>
+                      <div className="forum-desc">{f.description}</div>
+                      <div className="forum-meta">
+                        <span>{f.topics.length} topics</span>
+                        <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
+                        {pinnedCount > 0 && <span>📌 {pinnedCount}</span>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
           }
-          <div className="footer">
-            Free Zone © 2026 — <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer">Contrat Etherscan ↗</a>
-          </div>
+          <div className="footer">Free Zone © 2026 — <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Contrat Etherscan ↗</a></div>
         </div>
       )}
 
@@ -711,14 +764,22 @@ function App() {
                 const likeKey = `${activeForum.id}_${t.id}`;
                 const { count, hasLiked } = getLike(likeKey);
                 return (
-                  <div key={t.id} className="topic-card" onClick={() => openTopic(t)}>
+                  <div key={t.id} className="topic-card" onClick={() => openTopic(t)} style={{ borderLeft: t.pinned ? "3px solid #f59e0b" : undefined }}>
                     <div style={{ flex: 1 }}>
-                      <div className="topic-title">{t.title}</div>
+                      <div className="topic-title">
+                        {t.pinned && <span style={{ color: "#f59e0b", marginRight: 6, fontSize: 14 }}>📌</span>}
+                        {t.title}
+                      </div>
                       <div className="topic-meta">par {t.author} · {t.date}</div>
-                      <div style={{ marginTop: 8 }} onClick={e => e.stopPropagation()}>
+                      <div style={{ marginTop: 8, display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
                         <button className={`like-btn ${hasLiked ? "liked" : ""}`} onClick={() => toggleLike(likeKey)}>
                           {count > 0 ? `❤️ ${count}` : "🤍"} J'aime
                         </button>
+                        {estAbonne && (
+                          <button className="like-btn" onClick={() => togglePin(activeForum.id, t.id)} style={{ fontSize: 12 }}>
+                            {t.pinned ? "📌 Désépingler" : "📌 Épingler"}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="topic-replies">{t.replies.length} 💬</div>
@@ -743,13 +804,21 @@ function App() {
         <div className="forum-page">
           <button className="back-btn" onClick={goForum}>← Retour {activeForum?.emoji} {activeForum?.name}</button>
           <div style={{ borderRadius: 14, padding: 28, marginBottom: 24, background: dark ? "#161b22" : "#ffffff", border: "1.5px solid #6366f1" }}>
-            <h2 style={{ fontSize: 22, marginBottom: 12 }}>{activeTopic.title}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              {activeTopic.pinned && <span style={{ background: "#f59e0b22", color: "#f59e0b", border: "1px solid #f59e0b44", borderRadius: 20, padding: "2px 10px", fontSize: 12 }}>📌 Épinglé</span>}
+              <h2 style={{ fontSize: 22, margin: 0 }}>{activeTopic.title}</h2>
+            </div>
             <p style={{ opacity: 0.5, fontSize: 13, marginBottom: 16 }}>par <strong>{activeTopic.author}</strong> · {activeTopic.date}</p>
             {activeTopic.content && <p style={{ fontSize: 15, lineHeight: 1.7 }}>{activeTopic.content}</p>}
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
               <button className={`like-btn ${getLike(`${activeForum?.id}_${activeTopic.id}`).hasLiked ? "liked" : ""}`} onClick={() => toggleLike(`${activeForum?.id}_${activeTopic.id}`)}>
                 {getLike(`${activeForum?.id}_${activeTopic.id}`).count > 0 ? `❤️ ${getLike(`${activeForum?.id}_${activeTopic.id}`).count}` : "🤍"} J'aime
               </button>
+              {estAbonne && (
+                <button className="like-btn" onClick={() => togglePin(activeForum?.id, activeTopic.id)} style={{ fontSize: 12 }}>
+                  {activeTopic.pinned ? "📌 Désépingler" : "📌 Épingler"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -760,7 +829,8 @@ function App() {
                 <span style={{ fontSize: 22 }}>{getAvatar(r.author)}</span>
                 <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}><strong>{pseudo[r.author] || r.author}</strong> · {r.date}</p>
               </div>
-              <p style={{ fontSize: 15, lineHeight: 1.6 }}>{r.content}</p>
+              {r.content && <p style={{ fontSize: 15, lineHeight: 1.6 }}>{r.content}</p>}
+              {r.image && <img src={r.image} alt="img" style={{ maxWidth: "100%", maxHeight: 300, borderRadius: 10, marginTop: 8, display: "block" }} />}
               <button className={`like-btn ${getLike(`reply_${r.id}`).hasLiked ? "liked" : ""}`} style={{ marginTop: 8 }} onClick={() => toggleLike(`reply_${r.id}`)}>
                 {getLike(`reply_${r.id}`).count > 0 ? `❤️ ${getLike(`reply_${r.id}`).count}` : "🤍"} J'aime
               </button>
@@ -772,9 +842,22 @@ function App() {
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez votre wallet pour répondre</p>}
             {account && !estAbonne && <p style={{ color: "#f59e0b", marginBottom: 12, fontSize: 14 }}>Abonnez-vous pour répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4} style={{ ...inputStyle, resize: "vertical" }} disabled={!estAbonne} />
-            <button className="btn btn-primary" onClick={posterReponse} style={{ padding: "12px 28px" }} disabled={!estAbonne || !account}>
-              Poster la réponse ✉️
-            </button>
+            {/* 📎 Image dans réponse */}
+            <input type="file" accept="image/*" ref={replyImageRef} style={{ display: "none" }} onChange={handleReplyImage} />
+            {replyImage && (
+              <div style={{ position: "relative", marginBottom: 12 }}>
+                <img src={replyImage} alt="preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8 }} />
+                <button onClick={() => setReplyImage(null)} style={{ position: "absolute", top: 4, right: 4, background: "#ef4444", color: "white", border: "none", borderRadius: "50%", width: 24, height: 24, cursor: "pointer", fontSize: 12 }}>✕</button>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <button className="btn btn-primary" onClick={posterReponse} style={{ padding: "12px 28px" }} disabled={!estAbonne || !account}>
+                Poster la réponse ✉️
+              </button>
+              {estAbonne && (
+                <button onClick={() => replyImageRef.current?.click()} className="btn btn-ghost" style={{ fontSize: 13 }}>📎 Image</button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -784,10 +867,7 @@ function App() {
         {toasts.map(t => (
           <div key={t.id} className={`toast ${t.type} ${t.closing ? "closing" : ""}`}>
             <div className="toast-icon">{t.icon}</div>
-            <div className="toast-content">
-              <div className="toast-title">{t.title}</div>
-              <div className="toast-msg">{t.msg}</div>
-            </div>
+            <div className="toast-content"><div className="toast-title">{t.title}</div><div className="toast-msg">{t.msg}</div></div>
             <button className="toast-close" onClick={() => removeToast(t.id)}>✕</button>
           </div>
         ))}
