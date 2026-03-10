@@ -78,11 +78,8 @@ function App() {
   const [replyImage, setReplyImage] = useState(null);
   const [recherche, setRecherche] = useState("");
   const [rechercheTopic, setRechercheTopic] = useState("");
-
-  // 🔍 Recherche globale
   const [rechercheGlobale, setRechercheGlobale] = useState("");
   const [showRechercheGlobale, setShowRechercheGlobale] = useState(false);
-
   const [sortBy, setSortBy] = useState("date");
   const [currentPage, setCurrentPage] = useState(1);
   const [likes, setLikes] = useState(() => { const s = localStorage.getItem("freezone_likes"); return s ? JSON.parse(s) : {}; });
@@ -96,10 +93,8 @@ function App() {
   const [newMessage, setNewMessage] = useState("");
   const [newMessageTo, setNewMessageTo] = useState("");
   const [showNewConversation, setShowNewConversation] = useState(false);
-  // 🔔 Stream ref + unread
   const streamRef = useRef(null);
   const [xmtpUnread, setXmtpUnread] = useState(0);
-  // 📎 Image input ref
   const imageInputRef = useRef(null);
   const replyImageRef = useRef(null);
 
@@ -118,7 +113,6 @@ function App() {
   useEffect(() => { localStorage.setItem("freezone_avatars", JSON.stringify(avatars)); }, [avatars]);
   useEffect(() => { localStorage.setItem("freezone_membres", JSON.stringify(membres)); }, [membres]);
 
-  // ─── Init wallet + contrat + XMTP ──────────────────────────
   useEffect(() => {
     if (!isConnected || !address || !walletProvider) {
       if (!isConnected) { setEstAbonne(false); setExpiration(null); setXmtpClient(null); setConversations([]); setXmtpUnread(0); }
@@ -150,8 +144,6 @@ function App() {
         if (savedAvatars[shortA]) setSelectedAvatar(savedAvatars[shortA]);
         if (!savedPseudos[shortA]) setShowPseudoModal(true);
         addToast(savedAvatars[shortA] || "👋", "Connecté !", `Bienvenue ${savedPseudos[shortA] || shortA}`, "success");
-
-        // XMTP V3
         try {
           setXmtpLoading(true);
           const signer = await provider.getSigner();
@@ -161,7 +153,6 @@ function App() {
           const convList = await client.conversations.list();
           setConversations(convList);
           addToast("🔒", "XMTP actif !", "Messagerie E2E chiffrée", "success");
-          // 🔔 Stream notifications temps réel
           startXmtpStream(client);
         } catch (e) {
           console.error("XMTP:", e);
@@ -174,7 +165,6 @@ function App() {
     return () => { if (streamRef.current) { streamRef.current = null; } };
   }, [isConnected, address, walletProvider]); // eslint-disable-line
 
-  // ─── 🔔 Stream XMTP temps réel ─────────────────────────────
   const startXmtpStream = async (client) => {
     if (streamRef.current) return;
     streamRef.current = true;
@@ -194,7 +184,6 @@ function App() {
     } catch (e) { console.error("Stream XMTP:", e); }
   };
 
-  // ─── Toasts ─────────────────────────────────────────────────
   const addToast = (icon, title, msg, type = "info") => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, icon, title, msg, type }]);
@@ -207,10 +196,9 @@ function App() {
   };
 
   const getAvatar = addr => avatars[addr] || "";
-  const getDisplayName = addr => pseudo[addr] || addr;
+  const getDisplayName = addr => pseudo[addr] || addr; // eslint-disable-line
   const isOnline = lastSeen => lastSeen && (Date.now() - lastSeen < 30 * 60 * 1000);
 
-  // ─── Likes ──────────────────────────────────────────────────
   const toggleLike = key => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
@@ -220,7 +208,6 @@ function App() {
   };
   const getLike = key => { const l = likes[key] || { count: 0, likedBy: [] }; return { count: l.count, hasLiked: l.likedBy.includes(account) }; };
 
-  // ─── 📌 Épingler un topic ────────────────────────────────────
   const togglePin = (forumId, topicId) => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
@@ -234,7 +221,6 @@ function App() {
     addToast("📌", "Topic épinglé !", "", "success");
   };
 
-  // ─── Tri topics (épinglés en premier) ───────────────────────
   const sortTopics = (topics, forumId) => {
     const pinned = topics.filter(t => t.pinned);
     const unpinned = topics.filter(t => !t.pinned);
@@ -246,7 +232,6 @@ function App() {
     return [...pinned.sort(sortFn), ...unpinned.sort(sortFn)];
   };
 
-  // ─── 🔍 Recherche globale ────────────────────────────────────
   const resultatsGlobaux = rechercheGlobale.trim().length >= 2
     ? forums.flatMap(f =>
         f.topics.filter(t =>
@@ -258,7 +243,6 @@ function App() {
       )
     : [];
 
-  // ─── XMTP Fonctions ─────────────────────────────────────────
   const demarrerConversationXMTP = async () => {
     if (!xmtpClient) { alert("XMTP non connecté !"); return; }
     if (!newMessageTo.trim()) { alert("Entrez une adresse !"); return; }
@@ -285,32 +269,28 @@ function App() {
     } catch (e) { alert("❌ " + e.message); }
   };
 
-// 📎 Image dans XMTP — avec compression
-const handleXmtpImage = e => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // Compression via canvas avant envoi XMTP
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-  img.onload = () => {
-    const canvas = document.createElement("canvas");
-    const MAX = 600; // px max
-    let w = img.width, h = img.height;
-    if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-    if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    const compressed = canvas.toDataURL("image/jpeg", 0.6); // qualité 60%
-    URL.revokeObjectURL(objectUrl);
-    envoyerMessageXMTP(compressed);
+  const handleXmtpImage = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const MAX = 600;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL("image/jpeg", 0.6);
+      URL.revokeObjectURL(objectUrl);
+      envoyerMessageXMTP(compressed);
+    };
+    img.src = objectUrl;
+    e.target.value = "";
   };
-  img.src = objectUrl;
-  e.target.value = "";
-};
 
-  // 📎 Image dans réponse forum
   const handleReplyImage = e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -328,7 +308,6 @@ const handleXmtpImage = e => {
     setPage("conversation");
   };
 
-  // ─── Abonnement ─────────────────────────────────────────────
   const sAbonner = async () => {
     if (!isConnected || !walletProvider) { alert("Connectez votre wallet !"); return; }
     try {
@@ -347,7 +326,6 @@ const handleXmtpImage = e => {
     finally { setLoadingAbo(false); }
   };
 
-  // ─── Pseudo / Avatar ─────────────────────────────────────────
   const savePseudo = () => {
     if (!newPseudo.trim()) { alert("Entrez un pseudo !"); return; }
     const shortA = shortAddr(account);
@@ -359,20 +337,14 @@ const handleXmtpImage = e => {
     addToast(selectedAvatar, "Profil enregistré !", `Vous êtes ${newPseudo.trim()}`, "success");
   };
 
-  // ─── Navigation ──────────────────────────────────────────────
   const openForum = forum => { setActiveForum(forum); setRechercheTopic(""); setCurrentPage(1); setSortBy("date"); setPage("forum"); };
-  const openTopic = (topic, forum = null) => {
-    if (forum) setActiveForum(forum);
-    setActiveTopic(topic);
-    setPage("topic");
-  };
+  const openTopic = (topic, forum = null) => { if (forum) setActiveForum(forum); setActiveTopic(topic); setPage("topic"); };
   const goHome = () => { setPage("home"); setActiveForum(null); setActiveTopic(null); setRecherche(""); setRechercheGlobale(""); setShowRechercheGlobale(false); };
   const goForum = () => { setPage("forum"); setActiveTopic(null); };
 
   const prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : "...";
   const joursRestants = expiration ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24))) : 0;
 
-  // ─── Créer salon ─────────────────────────────────────────────
   const creerSalon = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
@@ -383,7 +355,6 @@ const handleXmtpImage = e => {
     setNewSalon({ emoji: "", name: "", description: "" });
   };
 
-  // ─── Créer topic ─────────────────────────────────────────────
   const creerTopic = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
@@ -396,7 +367,6 @@ const handleXmtpImage = e => {
     setNewTopic({ title: "", content: "" });
   };
 
-  // ─── Poster réponse (avec image) ─────────────────────────────
   const posterReponse = () => {
     if (!account) { alert("Connectez votre wallet !"); return; }
     if (!estAbonne) { alert("Abonnement requis !"); return; }
@@ -411,13 +381,18 @@ const handleXmtpImage = e => {
 
   const inputStyle = { display: "block", width: "100%", padding: "10px 14px", borderRadius: 8, border: "1.5px solid #30363d", background: dark ? "#0d1117" : "#f8f9ff", color: dark ? "#e6edf3" : "#1a1a2e", fontSize: 15, marginBottom: 16, marginTop: 6, boxSizing: "border-box", fontFamily: "inherit" };
 
-  const topicsBase = activeForum?.topics.filter(t => t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) || t.author.toLowerCase().includes(rechercheTopic.toLowerCase())) || [];
+  const topicsBase = activeForum?.topics.filter(t =>
+    t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
+    t.author.toLowerCase().includes(rechercheTopic.toLowerCase())
+  ) || [];
   const topicsSorted = sortTopics(topicsBase, activeForum?.id);
   const totalPages = Math.ceil(topicsSorted.length / TOPICS_PAR_PAGE);
   const topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE);
-  const forumsFiltered = forums.filter(f => f.name.toLowerCase().includes(recherche.toLowerCase()) || f.description.toLowerCase().includes(recherche.toLowerCase()));
+  const forumsFiltered = forums.filter(f =>
+    f.name.toLowerCase().includes(recherche.toLowerCase()) ||
+    f.description.toLowerCase().includes(recherche.toLowerCase())
+  );
 
-  // Helper bulle message (image ou texte)
   const renderBubbleContent = (content) => {
     if (typeof content === "string" && content.startsWith("data:image/")) {
       return <img src={content} alt="img" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, display: "block" }} />;
@@ -429,9 +404,8 @@ const handleXmtpImage = e => {
     <div>
       {/* ══════════ HEADER ══════════ */}
       <header className="header">
-        <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
+        <div className="logo" onClick={goHome}>Free<span>Zone</span></div>
         <div className="header-actions">
-          {/* 🔍 Recherche globale */}
           <div style={{ position: "relative" }}>
             <button className="btn btn-ghost" onClick={() => setShowRechercheGlobale(!showRechercheGlobale)} title="Recherche globale">🔍</button>
             {showRechercheGlobale && (
@@ -462,7 +436,6 @@ const handleXmtpImage = e => {
               </div>
             )}
           </div>
-
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
           {account && (
@@ -569,7 +542,9 @@ const handleXmtpImage = e => {
             <div style={{ marginLeft: "auto", fontSize: 12, background: "#22c55e22", color: "#22c55e", border: "1px solid #22c55e44", borderRadius: 20, padding: "3px 10px" }}>🔒 E2E</div>
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: "auto" }}>
-            {xmtpMessages.length === 0 && <div style={{ textAlign: "center", opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
+            {xmtpMessages.length === 0 && (
+              <div style={{ textAlign: "center", opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>
+            )}
             {xmtpMessages.map((msg, i) => {
               const isSent = msg.senderInboxId === xmtpClient?.inboxId;
               return (
@@ -584,27 +559,28 @@ const handleXmtpImage = e => {
           </div>
           <div className="message-input-bar">
             {!estAbonne && <p style={{ color: "#f59e0b", fontSize: 14, margin: 0 }}>Abonnement requis pour envoyer</p>}
-            {/* 📎 input caché */}
             <input type="file" accept="image/*" ref={imageInputRef} style={{ display: "none" }} onChange={handleXmtpImage} />
             <button
-  onClick={() => imageInputRef.current?.click()}
-  disabled={!estAbonne}
-  title="Envoyer une image"
-  style={{
-    background: "#6366f122",
-    border: "1.5px solid #6366f144",
-    borderRadius: 10,
-    fontSize: 18,
-    cursor: "pointer",
-    padding: "8px 10px",
-    opacity: estAbonne ? 1 : 0.4,
-    transition: "all 0.2s",
-    flexShrink: 0
-  }}
->📎</button>
-
+              onClick={() => imageInputRef.current?.click()}
+              disabled={!estAbonne}
+              title="Envoyer une image"
+              style={{
+                background: "#6366f122",
+                border: "1.5px solid #6366f144",
+                borderRadius: 10,
+                fontSize: 18,
+                cursor: estAbonne ? "pointer" : "not-allowed",
+                padding: "8px 10px",
+                opacity: estAbonne ? 1 : 0.4,
+                transition: "all 0.2s",
+                flexShrink: 0,
+                color: "inherit"
+              }}
+            >📎</button>
             <textarea
-              className="message-input" rows={1} value={newMessage}
+              className="message-input"
+              rows={1}
+              value={newMessage}
               onChange={e => setNewMessage(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyerMessageXMTP(); } }}
               placeholder="✍️ Message E2E... Entrée pour envoyer"
@@ -852,7 +828,6 @@ const handleXmtpImage = e => {
               )}
             </div>
           </div>
-
           <h3 style={{ marginBottom: 16, opacity: 0.7 }}>{activeTopic.replies.length} réponse{activeTopic.replies.length !== 1 ? "s" : ""}</h3>
           {activeTopic.replies.map(r => (
             <div key={r.id} style={{ borderRadius: 12, padding: "16px 20px", marginBottom: 12, background: dark ? "#161b22" : "#ffffff", border: `1.5px solid ${dark ? "#30363d" : "#e2e8f0"}` }}>
@@ -867,13 +842,11 @@ const handleXmtpImage = e => {
               </button>
             </div>
           ))}
-
           <div style={{ borderRadius: 14, padding: 24, marginTop: 24, background: dark ? "#161b22" : "#ffffff", border: `1.5px solid ${dark ? "#30363d" : "#e2e8f0"}` }}>
             <h3 style={{ marginBottom: 16 }}>Votre réponse</h3>
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez votre wallet pour répondre</p>}
             {account && !estAbonne && <p style={{ color: "#f59e0b", marginBottom: 12, fontSize: 14 }}>Abonnez-vous pour répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4} style={{ ...inputStyle, resize: "vertical" }} disabled={!estAbonne} />
-            {/* 📎 Image dans réponse */}
             <input type="file" accept="image/*" ref={replyImageRef} style={{ display: "none" }} onChange={handleReplyImage} />
             {replyImage && (
               <div style={{ position: "relative", marginBottom: 12 }}>
