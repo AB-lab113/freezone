@@ -293,13 +293,13 @@ function App() {
     const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      const MAX = 600;
+      const MAX = 300;
       let w = img.width, h = img.height;
       if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
       if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', 0.6);
+      const compressed = canvas.toDataURL('image/jpeg', 0.3);
       URL.revokeObjectURL(objectUrl);
       envoyerMessageXMTP(compressed);
     };
@@ -588,7 +588,8 @@ function App() {
               onClick={() => imageInputRef.current?.click()}
               disabled={!estAbonne}
               title="Envoyer une image"
-              style={{ background: '#6366f122', border: '1.5px solid #6366f144', borderRadius: 10, fontSize: 18, cursor: estAbonne ? 'pointer' : 'not-allowed', padding: '8px 10px', opacity: estAbonne ? 1 : 0.4, transition: 'all 0.2s', flexShrink: 0, color: 'inherit' }}
+              style={{ background: '#6366f1', border: 'none', borderRadius: 10, fontSize: 18, cursor: estAbonne ? 'pointer' : 'not-allowed', padding: '8px 12px', opacity: estAbonne ? 1 : 0.3, transition: 'all 0.2s', flexShrink: 0, color: 'white', width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+
             >📎</button>
             <textarea
               className="message-input"
