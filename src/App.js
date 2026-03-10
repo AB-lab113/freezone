@@ -581,7 +581,7 @@ function App() {
               );
             })}
           </div>
-          <div className="message-input-bar">
+          <div className="message-input-bar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px' }}>
             {!estAbonne && <p style={{ color: '#f59e0b', fontSize: 14, margin: 0 }}>Abonnement requis</p>}
             <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleXmtpImage} />
             <button
