@@ -17,8 +17,8 @@ contract ForumAbo {
 
     constructor() {
         owner = msg.sender;
-        // Chainlink ETH/USD feed — Sepolia
-        priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        // Chainlink ETH/USD feed — Mainnet
+        priceFeed = AggregatorV3Interface(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
     }
 
     // Calcule le prix de 2 EUR en Wei en temps réel

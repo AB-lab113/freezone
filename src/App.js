@@ -18,7 +18,7 @@ createAppKit({
   networks: [sepolia],
   projectId: PROJECT_ID,
   metadata: {
-    name: 'FreeZone',
+    name: 'ZoneFree',
     description: 'Forum décentralisé, libre et privé',
     url: 'https://freezone-kappa.vercel.app',
     icons: ['https://freezone-kappa.vercel.app/favicon.ico'],
