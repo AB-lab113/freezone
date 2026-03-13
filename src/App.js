@@ -37,11 +37,11 @@ const FORUMS_INIT = [
   {
     id: 'general', emoji: '💬', name: 'Général', description: 'Discussions libres, actualités du jour',
     topics: [
-      { id: 1, title: 'Bienvenue sur Free Zone ! Présentez-vous 👋', author: 'Admin', pinned: true, replies: [
+      { id: 1, title: 'Bienvenue sur Zone Free ! Présentez-vous 👋', author: 'Admin', pinned: true, replies: [
         { id: 1, author: '0xA1B2...C3D4', content: 'Bonjour tout le monde !', date: '01/03/2026' },
         { id: 2, author: '0xE5F6...G7H8', content: "Ravi d'être ici !", date: '01/03/2026' },
       ], date: '01/03/2026' },
-      { id: 2, title: 'Les règles de la communauté Free Zone', author: 'Admin', pinned: true, replies: [], date: '01/03/2026' },
+      { id: 2, title: 'Les règles de la communauté Zone Free', author: 'Admin', pinned: true, replies: [], date: '01/03/2026' },
       { id: 3, title: "Que pensez-vous de la liberté d'expression en 2026 ?", author: '0xA1B2...C3D4', pinned: false, replies: [], date: '01/03/2026' },
     ],
   },
@@ -84,13 +84,13 @@ function App() {
   const { walletProvider } = useAppKitProvider('eip155');
   const account = isConnected ? address : null;
 
-  const [dark, setDark] = useState(() => { const s = localStorage.getItem('freezone-dark'); return s !== null ? JSON.parse(s) : true; });
+  const [dark, setDark] = useState(() => { const s = localStorage.getItem('zonefree-dark'); return s !== null ? JSON.parse(s) : true; });
   const [estAbonne, setEstAbonne] = useState(false);
   const [loadingAbo, setLoadingAbo] = useState(false);
   const [expiration, setExpiration] = useState(null);
   const [prixETH, setPrixETH] = useState(null);
   const [page, setPage] = useState('home');
-  const [forums, setForums] = useState(() => { const s = localStorage.getItem('freezone-forums'); return s ? JSON.parse(s) : FORUMS_INIT; });
+  const [forums, setForums] = useState(() => { const s = localStorage.getItem('zonefree-forums'); return s ? JSON.parse(s) : FORUMS_INIT; });
   const [activeForum, setActiveForum] = useState(null);
   const [activeTopic, setActiveTopic] = useState(null);
   const [showTranslate, setShowTranslate] = useState(false);
@@ -106,7 +106,7 @@ function App() {
   const [showRechercheGlobale, setShowRechercheGlobale] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   const [currentPage, setCurrentPage] = useState(1);
-  const [likes, setLikes] = useState(() => { const s = localStorage.getItem('freezone-likes'); return s ? JSON.parse(s) : {}; });
+  const [likes, setLikes] = useState(() => { const s = localStorage.getItem('zonefree-likes'); return s ? JSON.parse(s) : {}; });
   const [xmtpClient, setXmtpClient] = useState(null);
   const [xmtpLoading, setXmtpLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -119,20 +119,20 @@ function App() {
   const [xmtpUnread, setXmtpUnread] = useState(0);
   const imageInputRef = useRef(null);
   const replyImageRef = useRef(null);
-  const [pseudo, setPseudo] = useState(() => { const s = localStorage.getItem('freezone-pseudo'); return s ? JSON.parse(s) : {}; });
-  const [avatars, setAvatars] = useState(() => { const s = localStorage.getItem('freezone-avatars'); return s ? JSON.parse(s) : {}; });
-  const [membres, setMembres] = useState(() => { const s = localStorage.getItem('freezone-membres'); return s ? JSON.parse(s) : []; });
+  const [pseudo, setPseudo] = useState(() => { const s = localStorage.getItem('zonefree-pseudo'); return s ? JSON.parse(s) : {}; });
+  const [avatars, setAvatars] = useState(() => { const s = localStorage.getItem('zonefree-avatars'); return s ? JSON.parse(s) : {}; });
+  const [membres, setMembres] = useState(() => { const s = localStorage.getItem('zonefree-membres'); return s ? JSON.parse(s) : []; });
   const [showPseudoModal, setShowPseudoModal] = useState(false);
   const [newPseudo, setNewPseudo] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('🦊');
   const [toasts, setToasts] = useState([]);
 
-  useEffect(() => { localStorage.setItem('freezone-forums', JSON.stringify(forums)); }, [forums]);
-  useEffect(() => { localStorage.setItem('freezone-dark', JSON.stringify(dark)); document.body.className = dark ? 'dark' : 'light'; }, [dark]);
-  useEffect(() => { localStorage.setItem('freezone-likes', JSON.stringify(likes)); }, [likes]);
-  useEffect(() => { localStorage.setItem('freezone-pseudo', JSON.stringify(pseudo)); }, [pseudo]);
-  useEffect(() => { localStorage.setItem('freezone-avatars', JSON.stringify(avatars)); }, [avatars]);
-  useEffect(() => { localStorage.setItem('freezone-membres', JSON.stringify(membres)); }, [membres]);
+  useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)); }, [forums]);
+  useEffect(() => { localStorage.setItem('zonefree-dark', JSON.stringify(dark)); document.body.className = dark ? 'dark' : 'light'; }, [dark]);
+  useEffect(() => { localStorage.setItem('zonefree-likes', JSON.stringify(likes)); }, [likes]);
+  useEffect(() => { localStorage.setItem('zonefree-pseudo', JSON.stringify(pseudo)); }, [pseudo]);
+  useEffect(() => { localStorage.setItem('zonefree-avatars', JSON.stringify(avatars)); }, [avatars]);
+  useEffect(() => { localStorage.setItem('zonefree-membres', JSON.stringify(membres)); }, [membres]);
 
   useEffect(() => {
     if (!isConnected || !address || !walletProvider) {
@@ -150,17 +150,17 @@ function App() {
         const prix = await contract.getPrixEnWei();
         setPrixETH(prix);
         const shortA = shortAddr(address);
-        const savedPseudos = JSON.parse(localStorage.getItem('freezone-pseudo') || '{}');
-        const savedAvatars = JSON.parse(localStorage.getItem('freezone-avatars') || '{}');
-        const savedMembres = JSON.parse(localStorage.getItem('freezone-membres') || '[]');
+        const savedPseudos = JSON.parse(localStorage.getItem('zonefree-pseudo') || '{}');
+        const savedAvatars = JSON.parse(localStorage.getItem('zonefree-avatars') || '{}');
+        const savedMembres = JSON.parse(localStorage.getItem('zonefree-membres') || '[]');
         const existing = savedMembres.find(m => m.address === shortA);
         if (existing) {
           const updated = savedMembres.map(m => m.address === shortA ? { ...m, lastSeen: Date.now() } : m);
-          setMembres(updated); localStorage.setItem('freezone-membres', JSON.stringify(updated));
+          setMembres(updated); localStorage.setItem('zonefree-membres', JSON.stringify(updated));
         } else {
           const newM = { address: shortA, pseudo: savedPseudos[shortA] || '', avatar: savedAvatars[shortA] || '🦊', lastSeen: Date.now() };
           const updated = [...savedMembres, newM];
-          setMembres(updated); localStorage.setItem('freezone-membres', JSON.stringify(updated));
+          setMembres(updated); localStorage.setItem('zonefree-membres', JSON.stringify(updated));
         }
         if (savedAvatars[shortA]) setSelectedAvatar(savedAvatars[shortA]);
         if (!savedPseudos[shortA]) setShowPseudoModal(true);
@@ -337,7 +337,7 @@ function App() {
       setEstAbonne(true);
       const exp = await contract.abonnements(account);
       if (exp > 0) setExpiration(new Date(Number(exp) * 1000));
-      addToast('✅', 'Abonnement activé !', "30 jours d'accès complet FreeZone", 'success');
+      addToast('✅', 'Abonnement activé !', "30 jours d'accès complet ZoneFree", 'success');
     } catch (e) { alert('Erreur : ' + e.message); } finally { setLoadingAbo(false); }
   };
 
@@ -429,7 +429,7 @@ function App() {
 
       {/* ===== HEADER ===== */}
       <header className="header">
-        <div className="logo" onClick={goHome}>Free<span>Zone</span></div>
+        <div className="logo" onClick={goHome}>Zone<span>Free</span></div>
         <div className="header-actions">
 
           {/* Recherche globale */}
@@ -724,7 +724,7 @@ function App() {
         <div>
           <div className="hero">
             <div className="badge">🔒 Décentralisé · Libre · Privé</div>
-            <h1>Bienvenue sur <span>Free Zone</span></h1>
+            <h1>Bienvenue sur <span>Zone Free</span></h1>
             <p>Le forum décentralisé où la parole est libre. Abonnement sécurisé par Ethereum.</p>
           </div>
           <div className="search-container">
@@ -756,7 +756,7 @@ function App() {
               </div>
           }
           <div className="footer">
-            Free Zone © 2026 · <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer">Contrat Etherscan</a>
+            Zone Free © 2026 · <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer">Contrat Etherscan</a>
           </div>
         </div>
       )}
@@ -944,3 +944,7 @@ function App() {
 }
 
 export default App;
+
+
+
+
