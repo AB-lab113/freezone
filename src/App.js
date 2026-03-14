@@ -3,19 +3,19 @@ import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { createAppKit } from '@reown/appkit/react';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
-import { sepolia } from '@reown/appkit/networks';
+import { mainnet } from "@reown/appkit/networks"
 import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { Client } from '@xmtp/browser-sdk';
 import ForumAboABI from './ForumAbo.json';
 
-const CONTRACT_ADDRESS = '0x0cB2704923F4f3AdD852A087374366C030a7905c';
+const CONTRACT_ADDRESS = "0x7e776a0d9c9b812ea3d25109808800e07d189149";
 const TOPICS_PAR_PAGE = 5;
 const AVATARS = ['🦊','🐻','🦁','🐯','🐼','🐨','🦄','🐸','🦋','🐙','🦀','🐬','🦅','🌙','⭐','🔥','💎','🎭','🎪','🌈'];
 const PROJECT_ID = 'd65a475ce4a23ba152de3dc5a8e3639b';
 
 createAppKit({
   adapters: [new EthersAdapter()],
-  networks: [sepolia],
+  networks: [mainnet],
   projectId: PROJECT_ID,
   metadata: {
     name: 'ZoneFree',
