@@ -37,11 +37,11 @@ const FORUMS_INIT = [
   {
     id: 'general', emoji: '💬', name: 'Général', description: 'Discussions libres, actualités du jour',
     topics: [
-      { id: 1, title: 'Bienvenue sur Zone Free ! Présentez-vous 👋', author: 'Admin', pinned: true, replies: [
+      { id: 1, title: 'Bienvenue sur ZoneFree ! Présentez-vous 👋', author: 'Admin', pinned: true, replies: [
         { id: 1, author: '0xA1B2...C3D4', content: 'Bonjour tout le monde !', date: '01/03/2026' },
         { id: 2, author: '0xE5F6...G7H8', content: "Ravi d'être ici !", date: '01/03/2026' },
       ], date: '01/03/2026' },
-      { id: 2, title: 'Les règles de la communauté Zone Free', author: 'Admin', pinned: true, replies: [], date: '01/03/2026' },
+      { id: 2, title: 'Les règles de la communauté ZoneFree', author: 'Admin', pinned: true, replies: [], date: '01/03/2026' },
       { id: 3, title: "Que pensez-vous de la liberté d'expression en 2026 ?", author: '0xA1B2...C3D4', pinned: false, replies: [], date: '01/03/2026' },
     ],
   },
