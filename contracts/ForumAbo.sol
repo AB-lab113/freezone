@@ -11,6 +11,9 @@ contract ForumAbo {
     AggregatorV3Interface public priceFeed;
 
     mapping(address => uint256) public abonnements;
+        uint256 public totalAbonnes = 0;
+    uint256 public constant GRATUITS = 300;
+
 
     event Abonnement(address indexed user, uint256 expiration);
     event Retrait(address indexed encaisse, uint256 montant);
@@ -33,18 +36,25 @@ contract ForumAbo {
     }
 
     function sAbonner() external payable {
-        uint256 prix = getPrixEnWei();
+    uint256 prix = 0;
+
+    if (totalAbonnes >= GRATUITS) {
+        prix = getPrixEnWei();
         require(msg.value >= prix, "Montant insuffisant (2 EUR en ETH requis)");
-        uint256 debut = block.timestamp > abonnements[msg.sender]
-            ? block.timestamp
-            : abonnements[msg.sender];
-        abonnements[msg.sender] = debut + 30 days;
-        // Remboursement de l'excédent
-        if (msg.value > prix) {
-            payable(msg.sender).transfer(msg.value - prix);
-        }
-        emit Abonnement(msg.sender, abonnements[msg.sender]);
     }
+
+    uint256 debut = block.timestamp > abonnements[msg.sender]
+        ? block.timestamp
+        : abonnements[msg.sender];
+    abonnements[msg.sender] = debut + 30 days;
+    totalAbonnes++;
+
+    if (msg.value > prix) {
+        payable(msg.sender).transfer(msg.value - prix);
+    }
+    emit Abonnement(msg.sender, abonnements[msg.sender]);
+}
+
 
     function estAbonne(address user) external view returns (bool) {
         return abonnements[user] > block.timestamp;

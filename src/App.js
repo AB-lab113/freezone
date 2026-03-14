@@ -8,7 +8,7 @@ import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { Client } from '@xmtp/browser-sdk';
 import ForumAboABI from './ForumAbo.json';
 
-const CONTRACT_ADDRESS = "0x7e776a0d9c9b812ea3d25109808800e07d189149";
+const CONTRACT_ADDRESS = "0xb14912e1b0cdf7336aae2c386cb45e1370c9fb99";
 const TOPICS_PAR_PAGE = 5;
 const AVATARS = ['🦊','🐻','🦁','🐯','🐼','🐨','🦄','🐸','🦋','🐙','🦀','🐬','🦅','🌙','⭐','🔥','💎','🎭','🎪','🌈'];
 const PROJECT_ID = 'd65a475ce4a23ba152de3dc5a8e3639b';
@@ -513,7 +513,14 @@ function App() {
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <h2 style={{ fontSize: 22 }}>💬 Messagerie XMTP E2E</h2>
-            <button className="btn btn-primary" onClick={() => setShowNewConversation(true)}>+ Nouveau message</button>
+            <button className="btn btn-primary" onClick={() => {
+             if (!xmtpClient) {
+             addToast('💬', 'XMTP', 'Initialisation en cours, patientez...', 'info');
+            return;
+      }
+  setShowNewConversation(true);
+}}
+>+ Nouveau message</button>
           </div>
           {xmtpLoading && (
             <div style={{ background: '#6366f111', border: '1.5px solid #6366f1', borderRadius: 10, padding: '12px 16px', marginBottom: 20, fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>

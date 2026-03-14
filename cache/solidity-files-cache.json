@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\shark\\Desktop\\forum-decentralise\\contracts\\ForumAbo.sol": {
-      "lastModificationDate": 1773347059303,
-      "contentHash": "bc78ad8a718ce45cc7cfc23d62a58342",
+      "lastModificationDate": 1773521670194,
+      "contentHash": "28e4e9ac65c6bda93a7f00f622c2858d",
       "sourceName": "contracts/ForumAbo.sol",
       "solcConfig": {
         "version": "0.8.20",
