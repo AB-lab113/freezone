@@ -213,6 +213,11 @@ function App() {
   const connectWallet = async () => {
     if (!window.ethereum?.isMetaMask) { alert("Installez MetaMask !"); return; }
     const provider = new ethers.BrowserProvider(window.ethereum);
+    const network = await provider.getNetwork();
+    if (network.chainId !== 11155111n) {
+      alert("⚠️ Veuillez passer sur le réseau Sepolia dans MetaMask !");
+      return;
+    }
     const accounts = await provider.send("eth_requestAccounts", []);
     setAccount(accounts[0]);
     await verifierAbonnement(accounts[0], provider);
