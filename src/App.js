@@ -71,7 +71,6 @@ function App() {
   });
   const [activeForum, setActiveForum] = useState(null);
   const [activeTopic, setActiveTopic] = useState(null);
-  const [showTranslate, setShowTranslate] = useState(false);
   const [showNewSalon, setShowNewSalon] = useState(false);
   const [showNewTopic, setShowNewTopic] = useState(false);
   const [newSalon, setNewSalon] = useState({ emoji: "💬", name: "", description: "" });
@@ -313,8 +312,6 @@ function App() {
       <header className="header">
         <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
         <div className="header-actions">
-          <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
-          <button className="btn btn-ghost" onClick={() => setShowTranslate(!showTranslate)}>🌐</button>
           {account && (
             <>
               <button className="btn btn-ghost" onClick={() => setPage("messages")}
@@ -345,15 +342,6 @@ function App() {
           )}
         </div>
       </header>
-
-      {/* TRADUCTION */}
-      {showTranslate && (
-        <div className="translate-panel">
-          <p>🌐 Choisir une langue :</p>
-          <p style={{ marginTop: 8, fontSize: 12, opacity: 0.5 }}>Powered by Google Translate</p>
-        </div>
-      )}
-
       {/* BANNIÈRE ABONNEMENT */}
       {account && !estAbonne && !["profil","messages","conversation"].includes(page) && (
         <div style={{ background: "linear-gradient(90deg, #f59e0b22, #6366f122)", border: "1.5px solid #f59e0b", borderRadius: 12, margin: "16px auto", maxWidth: 860, padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
