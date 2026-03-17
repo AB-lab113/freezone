@@ -311,7 +311,8 @@ function App() {
       {/* HEADER */}
       <header className="header">
         <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
-        <div className="header-actions">
+              <div className="header-actions">
+          <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           {account && (
             <>
               <button className="btn btn-ghost" onClick={() => setPage("messages")}
