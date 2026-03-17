@@ -11,8 +11,8 @@ const FORUMS_INIT = [
     id: "general", emoji: "💬", name: "Général",
     description: "Discussions libres, actualités du jour",
     topics: [
-      { id: 1, title: "Bienvenue sur Free Zone ! Présentez-vous 👋", author: "Admin", replies: [{ id:1, author:"0xA1B2...C3D4", content:"Bonjour tout le monde !", date:"01/03/2026" },{ id:2, author:"0xE5F6...G7H8", content:"Ravi d'être ici !", date:"01/03/2026" }], date: "01/03/2026" },
-      { id: 2, title: "Les règles de la communauté Free Zone", author: "Admin", replies: [], date: "01/03/2026" },
+      { id: 1, title: "Bienvenue sur Zone Free ! Présentez-vous 👋", author: "Admin", replies: [{ id:1, author:"0xA1B2...C3D4", content:"Bonjour tout le monde !", date:"01/03/2026" },{ id:2, author:"0xE5F6...G7H8", content:"Ravi d'être ici !", date:"01/03/2026" }], date: "01/03/2026" },
+      { id: 2, title: "Les règles de la communauté Zone free", author: "Admin", replies: [], date: "01/03/2026" },
       { id: 3, title: "Que pensez-vous de la liberté d'expression en 2026 ?", author: "0xA1B2...C3D4", replies: [], date: "01/03/2026" },
     ]
   },
@@ -56,7 +56,7 @@ const FORUMS_INIT = [
 
 function App() {
   const [dark, setDark] = useState(() => {
-    const saved = localStorage.getItem("freezone_dark");
+    const saved = localStorage.getItem("zonefree_dark");
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [account, setAccount] = useState(null);
@@ -66,7 +66,7 @@ function App() {
   const [prixETH, setPrixETH] = useState(null);
   const [page, setPage] = useState("home");
   const [forums, setForums] = useState(() => {
-    const saved = localStorage.getItem("freezone_forums");
+    const saved = localStorage.getItem("zonefree_forums");
     return saved ? JSON.parse(saved) : FORUMS_INIT;
   });
   const [activeForum, setActiveForum] = useState(null);
@@ -84,11 +84,11 @@ function App() {
   const [sortBy, setSortBy] = useState("date");
   const [currentPage, setCurrentPage] = useState(1);
   const [likes, setLikes] = useState(() => {
-    const saved = localStorage.getItem("freezone_likes");
+    const saved = localStorage.getItem("zonefree_likes");
     return saved ? JSON.parse(saved) : {};
   });
   const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem("freezone_messages");
+    const saved = localStorage.getItem("zonefree_messages");
     return saved ? JSON.parse(saved) : [];
   });
   const [activeConversation, setActiveConversation] = useState(null);
@@ -96,13 +96,13 @@ function App() {
   const [newMessageTo, setNewMessageTo] = useState("");
   const [showNewConversation, setShowNewConversation] = useState(false);
 
-  useEffect(() => { localStorage.setItem("freezone_forums", JSON.stringify(forums)); }, [forums]);
+  useEffect(() => { localStorage.setItem("zonefree_forums", JSON.stringify(forums)); }, [forums]);
   useEffect(() => {
-    localStorage.setItem("freezone_dark", JSON.stringify(dark));
+    localStorage.setItem("zonefree_dark", JSON.stringify(dark));
     document.body.className = dark ? "dark" : "light";
   }, [dark]);
-  useEffect(() => { localStorage.setItem("freezone_likes", JSON.stringify(likes)); }, [likes]);
-  useEffect(() => { localStorage.setItem("freezone_messages", JSON.stringify(messages)); }, [messages]);
+  useEffect(() => { localStorage.setItem("zonefree_likes", JSON.stringify(likes)); }, [likes]);
+  useEffect(() => { localStorage.setItem("zonefree_messages", JSON.stringify(messages)); }, [messages]);
 
   // ===== LIKES =====
   const toggleLike = (key) => {
@@ -555,7 +555,7 @@ function App() {
         <>
           <div className="hero">
             <div className="badge">🔓 Décentralisé • Libre • Privé</div>
-            <h1>Bienvenue sur <span>Free Zone</span></h1>
+            <h1>Bienvenue sur <span>Zone Free</span></h1>
             <p>Le forum décentralisé où la parole est libre. Abonnement sécurisé par Ethereum.</p>
           </div>
           <div className="search-container">
@@ -585,7 +585,7 @@ function App() {
             </div>
           )}
           <div className="footer">
-            Free Zone © 2026 —{" "}
+            Zone Free © 2026 —{" "}
             <a href={`https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Contrat Etherscan ↗</a>
           </div>
         </>
