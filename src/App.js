@@ -213,8 +213,8 @@ function App() {
     if (!window.ethereum?.isMetaMask) { alert("Installez MetaMask !"); return; }
     const provider = new ethers.BrowserProvider(window.ethereum);
     const network = await provider.getNetwork();
-    if (network.chainId !== 11155111n) {
-      alert("⚠️ Veuillez passer sur le réseau Sepolia dans MetaMask !");
+    if (network.chainId !== 1n) {
+      alert("⚠️ Veuillez passer sur le réseau Ethereum Mainnet dans MetaMask !");
       return;
     }
     const accounts = await provider.send("eth_requestAccounts", []);
@@ -310,7 +310,7 @@ function App() {
     <div>
       {/* HEADER */}
       <header className="header">
-        <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Free<span>Zone</span></div>
+        <div className="logo" onClick={goHome} style={{ cursor: "pointer" }}>Zone<span>Free</span></div>
               <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? "☀️" : "🌙"}</button>
           {account && (
@@ -534,7 +534,7 @@ function App() {
             </div>
           )}
           <div style={{ textAlign: "center", marginTop: 24, opacity: 0.5, fontSize: 13 }}>
-            <a href={`https://sepolia.etherscan.io/address/${account}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Voir sur Etherscan ↗</a>
+            <a href={`https://etherscan.io/address/${account}`} target="_blank" rel="noreferrer" style={{ color: "#6366f1" }}>Voir sur Etherscan ↗</a>
           </div>
         </div>
       )}
