@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkforum_decentralise=self.webpackChunkforum_decentralise||[]).push([[1223],{31223(e,t,a){a.d(t,{createPublicClient:()=>c.l,defineChain:()=>l.x,http:()=>i.L});var c=a(43),i=a(10148),l=a(76919)}}]);
