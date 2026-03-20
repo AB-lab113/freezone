@@ -7,7 +7,6 @@ import ForumAboABI from './ForumAbo.json'
 const CONTRACT_ADDRESS = '0x7e776a0d9c9b812ea3d25109808800e07d189149'
 const MAINNET_CHAIN_ID = 1n
 const TOPICS_PAR_PAGE = 5
-const PINATA_JWT = 'VOTRE_PINATA_JWT_ICI'
 const IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
 
 const FORUMS_INIT = [
@@ -58,6 +57,21 @@ const FORUMS_INIT = [
   }
 ]
 
+// ─── MIGRATION PSEUDO ───
+const getPseudoFromStorage = () => {
+  const stored = localStorage.getItem('zonefree-pseudo') || ''
+  if (!stored) return ''
+  try {
+    const parsed = JSON.parse(stored)
+    if (typeof parsed === 'object' && parsed !== null) {
+      return String(Object.values(parsed)[0] || '')
+    }
+    return stored
+  } catch (e) {
+    return stored
+  }
+}
+
 function App() {
 
   // ─── THEME ───
@@ -80,7 +94,7 @@ function App() {
   const [page, setPage] = useState('home')
 
   // ─── PROFIL ───
-  const [pseudo, setPseudo] = useState(() => localStorage.getItem('zonefree-pseudo') || '')
+  const [pseudo, setPseudo] = useState(getPseudoFromStorage)
   const [editPseudo, setEditPseudo] = useState(false)
   const [newPseudo, setNewPseudo] = useState('')
 
@@ -121,13 +135,18 @@ function App() {
   // ─── XMTP V3 ───
   const [xmtpClient, setXmtpClient] = useState(null)
   const [xmtpLoading, setXmtpLoading] = useState(false)
+  const [xmtpError, setXmtpError] = useState(null)
   const [xmtpConversations, setXmtpConversations] = useState([])
   const [xmtpActiveConv, setXmtpActiveConv] = useState(null)
   const [xmtpMessages, setXmtpMessages] = useState([])
 
-  // ─── IPFS ───
+  // ─── IPFS / PINATA ───
+  const [pinataJWT, setPinataJWT] = useState(() => localStorage.getItem('zonefree-pinata-jwt') || '')
+  const [editPinataJWT, setEditPinataJWT] = useState(false)
+  const [newPinataJWT, setNewPinataJWT] = useState('')
   const [ipfsSaving, setIpfsSaving] = useState(false)
   const [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
+  const [ipfsStatus, setIpfsStatus] = useState(null)
 
   // ─── NOTIFICATIONS ───
   const [notifPermission, setNotifPermission] = useState(
@@ -142,46 +161,124 @@ function App() {
   }, [dark])
   useEffect(() => { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
   useEffect(() => { localStorage.setItem('zonefree-messages', JSON.stringify(messages)) }, [messages])
-  useEffect(() => { localStorage.setItem('zonefree-pseudo', pseudo) }, [pseudo])
+  useEffect(() => {
+    localStorage.setItem('zonefree-pseudo', pseudo)
+  }, [pseudo])
+  useEffect(() => {
+    if (pinataJWT) localStorage.setItem('zonefree-pinata-jwt', pinataJWT)
+  }, [pinataJWT])
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
   const demanderNotifications = async () => {
-    if (typeof Notification === 'undefined') return
-    const p = await Notification.requestPermission()
-    setNotifPermission(p)
+    if (typeof Notification === 'undefined') {
+      alert('Votre navigateur ne supporte pas les notifications.')
+      return
+    }
+    try {
+      const p = await Notification.requestPermission()
+      setNotifPermission(p)
+      if (p === 'granted') {
+        new Notification('🔔 ZoneFree', { body: 'Notifications activées avec succès !', icon: '/favicon.ico' })
+      } else {
+        alert('Notifications refusées. Autorisez-les dans les paramètres du navigateur.')
+      }
+    } catch (e) {
+      alert('Erreur notifications : ' + e.message)
+    }
   }
+
   const envoyerNotif = (titre, corps) => {
-    if (notifPermission === 'granted') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification(titre, { body: corps, icon: '/favicon.ico' }) } catch (e) {}
     }
   }
 
   // ═══════════════════ UNSTOPPABLE DOMAINS ═══════════════════
   const resoudreUD = async (address) => {
-    try {
-      const r = await fetch(`https://resolve.unstoppabledomains.com/reverse/${address.toLowerCase()}`)
-      if (r.ok) { const d = await r.json(); return d?.meta?.domain || null }
-    } catch (e) {}
+    if (!address) return null
+    const endpoints = [
+      `https://resolve.unstoppabledomains.com/reverse/${address.toLowerCase()}`,
+      `https://api.unstoppabledomains.com/resolve/reverse/${address.toLowerCase()}`
+    ]
+    for (const url of endpoints) {
+      try {
+        const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
+        if (r.ok) {
+          const d = await r.json()
+          const domain = d?.meta?.domain || d?.data?.domain || null
+          if (domain) return domain
+        }
+      } catch (e) {}
+    }
     return null
   }
 
-  // ═══════════════════ IPFS ═══════════════════
-  const sauvegarderIPFS = async (data) => {
-    if (!PINATA_JWT || PINATA_JWT === 'VOTRE_PINATA_JWT_ICI') return null
+  const detecterUD = async () => {
+    if (!account) { alert('Connectez MetaMask d\'abord !'); return }
+    const domain = await resoudreUD(account)
+    if (domain) {
+      setUdDomain(domain)
+      alert(`✅ Domaine trouvé : ${domain}`)
+    } else {
+      alert(`Aucun domaine .x trouvé pour ce wallet.\n\nCela peut être normal si le domaine est récent ou si l'API UD est indisponible temporairement.`)
+    }
+  }
+
+  // ═══════════════════ IPFS / PINATA ═══════════════════
+  const sauvegarderIPFS = async () => {
+    if (!pinataJWT) {
+      alert('Configurez d\'abord votre Pinata JWT dans les paramètres !')
+      setEditPinataJWT(true)
+      return
+    }
     setIpfsSaving(true)
+    setIpfsStatus(null)
     try {
+      const data = { forums, updatedAt: Date.now(), version: '1.0' }
       const r = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${PINATA_JWT}` },
-        body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${pinataJWT}`
+        },
+        body: JSON.stringify({
+          pinataContent: data,
+          pinataMetadata: { name: `ZoneFree-backup-${Date.now()}` }
+        })
       })
+      if (!r.ok) {
+        const err = await r.json()
+        throw new Error(err.error?.details || `HTTP ${r.status}`)
+      }
       const res = await r.json()
       const cid = res.IpfsHash
       localStorage.setItem('zonefree-ipfs-cid', cid)
       setIpfsCID(cid)
-      return cid
-    } catch (e) { console.error('IPFS:', e); return null }
-    finally { setIpfsSaving(false) }
+      setIpfsStatus('success')
+      envoyerNotif('💾 ZoneFree IPFS', `Sauvegarde réussie ! CID: ${cid.slice(0, 12)}...`)
+      alert(`✅ Sauvegarde IPFS réussie !\nCID: ${cid}`)
+    } catch (e) {
+      setIpfsStatus('error')
+      alert(`❌ Erreur IPFS Pinata :\n${e.message}\n\nVérifiez votre JWT Pinata.`)
+    } finally {
+      setIpfsSaving(false)
+    }
+  }
+
+  const sauvegarderIPFSAuto = async (data) => {
+    if (!pinataJWT) return null
+    try {
+      const r = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pinataJWT}` },
+        body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
+      })
+      if (!r.ok) return null
+      const res = await r.json()
+      localStorage.setItem('zonefree-ipfs-cid', res.IpfsHash)
+      setIpfsCID(res.IpfsHash)
+      return res.IpfsHash
+    } catch (e) { return null }
   }
 
   // ═══════════════════ LIKES ═══════════════════
@@ -287,15 +384,19 @@ function App() {
 
   // ═══════════════════ XMTP V3 ═══════════════════
   const initXMTP = async () => {
-    if (!account) return
+    if (!account) { alert('Connectez MetaMask d\'abord !'); return }
     setXmtpLoading(true)
+    setXmtpError(null)
     try {
       const provider = new ethers.BrowserProvider(window.ethereum)
       const ethersSigner = await provider.getSigner()
+      const address = await ethersSigner.getAddress()
       const xmtpSigner = {
-        getAddress: async () => await ethersSigner.getAddress(),
+        getAddress: async () => address,
         signMessage: async (message) => {
-          const sig = await ethersSigner.signMessage(message)
+          const sig = await ethersSigner.signMessage(
+            typeof message === 'string' ? message : ethers.toUtf8String(message)
+          )
           return ethers.getBytes(sig)
         }
       }
@@ -304,11 +405,15 @@ function App() {
       await client.conversations.sync()
       const convList = await client.conversations.list()
       setXmtpConversations(convList)
-      envoyerNotif('🔐 XMTP actif', 'Messagerie E2E chiffrée activée !')
+      envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E chiffrée activée !')
     } catch (e) {
       console.error('XMTP:', e)
-      alert('XMTP non disponible, messagerie locale active.\n' + e.message)
-    } finally { setXmtpLoading(false) }
+      const msg = e.message || 'Erreur inconnue'
+      setXmtpError(msg)
+      alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
+    } finally {
+      setXmtpLoading(false)
+    }
   }
 
   const demarrerConversationXMTP = async () => {
@@ -319,7 +424,9 @@ function App() {
       await dm.sync()
       setXmtpMessages(await dm.messages())
       setShowNewConversation(false); setNewMessageTo(''); setPage('xmtp-conversation')
-    } catch (e) { alert('Adresse invalide ou non enregistrée sur XMTP.\n' + e.message) }
+    } catch (e) {
+      alert('Adresse invalide ou non enregistrée sur XMTP.\n' + e.message)
+    }
   }
 
   const envoyerMessageXMTP = async () => {
@@ -345,14 +452,8 @@ function App() {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
       const prix = await contract.getPrixEnWei()
       setPrixETH(prix)
-      try {
-        const nb = await contract.totalAbonnes()
-        setTotalAbonnes(Number(nb))
-      } catch (e) {}
-      try {
-        const max = await contract.GRATUITS()
-        setMaxGratuit(Number(max))
-      } catch (e) {}
+      try { const nb = await contract.totalAbonnes(); setTotalAbonnes(Number(nb)) } catch (e) {}
+      try { const max = await contract.GRATUITS(); setMaxGratuit(Number(max)) } catch (e) {}
       return prix
     } catch (e) { console.error('Prix:', e); return null }
   }
@@ -364,7 +465,7 @@ function App() {
       const abonne = await contract.estAbonne(addr)
       setEstAbonne(abonne)
       const exp = await contract.abonnements(addr)
-      if (exp > 0) setExpiration(new Date(Number(exp) * 1000))
+      if (Number(exp) > 0) setExpiration(new Date(Number(exp) * 1000))
       await fetchPrix(provider)
       const domain = await resoudreUD(addr)
       if (domain) setUdDomain(domain)
@@ -423,7 +524,7 @@ function App() {
     if (!newSalon.name.trim()) { alert('Donnez un nom !'); return }
     const salon = {
       id: newSalon.name.toLowerCase().replace(/\s+/g, '-'),
-      emoji: newSalon.emoji, name: newSalon.name,
+      emoji: newSalon.emoji || '💬', name: newSalon.name,
       description: newSalon.description || 'Nouveau salon', topics: []
     }
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
@@ -441,7 +542,7 @@ function App() {
     const upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
     setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
-    if (PINATA_JWT !== 'VOTRE_PINATA_JWT_ICI') await sauvegarderIPFS({ forums: upd, updatedAt: Date.now() })
+    await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
   const posterReponse = async () => {
@@ -456,7 +557,7 @@ function App() {
     setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
     setActiveTopic(updTopic); setNewReply('')
     envoyerNotif('💬 Nouvelle réponse', `Dans : ${activeTopic.title}`)
-    if (PINATA_JWT !== 'VOTRE_PINATA_JWT_ICI') await sauvegarderIPFS({ forums: upd, updatedAt: Date.now() })
+    await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
   const togglePin = (topicId) => {
@@ -519,9 +620,7 @@ function App() {
               {estAbonne
                 ? <span className="badge-abonne">✓ Abonné</span>
                 : <button className="btn btn-primary" onClick={sAbonner} style={{ fontSize: 13, padding: '6px 14px' }} disabled={loadingAbo}>
-                    {loadingAbo
-                      ? <span className="spinner">Transaction...</span>
-                      : estGratuit ? '🎁 Gratuit !' : `S'abonner ${prixEnETH} ETH`}
+                    {loadingAbo ? <span className="spinner">Transaction...</span> : estGratuit ? '🎁 Gratuit !' : `S'abonner ${prixEnETH} ETH`}
                   </button>
               }
             </div>
@@ -569,10 +668,16 @@ function App() {
             </div>
           </div>
 
+          {xmtpError && (
+            <div style={{ background: '#ef444411', border: '1.5px solid #ef444444', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#ef4444' }}>
+              ⚠️ XMTP : {xmtpError}
+            </div>
+          )}
+
           <div style={{ background: xmtpClient ? '#22c55e11' : '#6366f111', border: `1.5px solid ${xmtpClient ? '#22c55e44' : '#6366f133'}`, borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13 }}>
             {xmtpClient
               ? '🔐 Chiffrement MLS E2E actif via XMTP V3 — Messages sur réseau décentralisé'
-              : '💾 Messages chiffrés localement — Cliquez "Activer XMTP" pour E2E réel'}
+              : '💾 Messages stockés localement — Cliquez "Activer XMTP" pour E2E réel'}
           </div>
 
           {xmtpClient && xmtpConversations.length > 0 && (
@@ -642,7 +747,7 @@ function App() {
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
             <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>💬</div>
             <div style={{ fontWeight: 700 }}>{activeConversation.participants.find(p => p !== shortAddr(account))}</div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.5 }}>🔒 Chiffré local</div>
+            <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.5 }}>🔒 Local</div>
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
             {activeConversation.msgs.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
@@ -682,7 +787,7 @@ function App() {
           <div style={{ padding: '16px 24px', borderBottom: '1.5px solid #30363d', display: 'flex', alignItems: 'center', gap: 16 }}>
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
             <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>🔐</div>
-            <div style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>{xmtpActiveConv.peerInboxId?.slice(0, 16)}...</div>
+            <div style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>{xmtpActiveConv.peerInboxId?.slice(0, 20)}...</div>
             <div style={{ marginLeft: 'auto', fontSize: 12, background: '#22c55e22', color: '#22c55e', border: '1px solid #22c55e44', borderRadius: 20, padding: '3px 10px' }}>🔐 E2E Chiffré</div>
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
@@ -721,26 +826,35 @@ function App() {
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
 
+          {/* CARTE IDENTITÉ */}
           <div style={{ borderRadius: 20, padding: 36, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1', textAlign: 'center' }}>
             <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
             {editPseudo ? (
               <div style={{ marginBottom: 16 }}>
                 <input value={newPseudo} onChange={e => setNewPseudo(e.target.value)}
                   style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: 18 }}
-                  placeholder="Votre pseudo..." />
+                  placeholder="Votre pseudo..." autoFocus />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button className="btn btn-primary" onClick={() => { setPseudo(newPseudo); setEditPseudo(false) }}>✓ Sauvegarder</button>
+                  <button className="btn btn-primary" onClick={() => {
+                    const clean = newPseudo.trim()
+                    setPseudo(clean)
+                    localStorage.setItem('zonefree-pseudo', clean)
+                    setEditPseudo(false)
+                  }}>✓ Sauvegarder</button>
                   <button className="btn btn-ghost" onClick={() => setEditPseudo(false)}>Annuler</button>
                 </div>
               </div>
             ) : (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{pseudo || udDomain || shortAddr(account)}</div>
-                <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo); setEditPseudo(true) }} style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>✏️ Modifier le pseudo</button>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{pseudo || udDomain || shortAddr(account)}</div>
+                <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo); setEditPseudo(true) }}
+                  style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>
+                  ✏️ Modifier le pseudo
+                </button>
               </div>
             )}
             {udDomain && <div style={{ fontSize: 13, color: '#6366f1', marginBottom: 8 }}>🌐 {udDomain}</div>}
-            <div style={{ fontSize: 13, opacity: 0.5, marginBottom: 24, fontFamily: 'monospace' }}>{account}</div>
+            <div style={{ fontSize: 12, opacity: 0.4, marginBottom: 20, fontFamily: 'monospace' }}>{account}</div>
             {estAbonne
               ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#22c55e22', border: '1.5px solid #22c55e', borderRadius: 20, padding: '8px 20px' }}>
                   <span>✅</span><span style={{ color: '#22c55e', fontWeight: 700 }}>Abonné actif</span>
@@ -751,6 +865,7 @@ function App() {
             }
           </div>
 
+          {/* PRIX */}
           <div style={{ borderRadius: 16, padding: 20, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 4 }}>PRIX ABONNEMENT (Chainlink)</div>
@@ -767,6 +882,7 @@ function App() {
             </div>
           </div>
 
+          {/* DÉTAILS */}
           <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
             <h3 style={{ marginBottom: 20 }}>📋 Détails abonnement</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -788,12 +904,13 @@ function App() {
                   <span>Progression</span><span>{joursRestants}/30 jours restants</span>
                 </div>
                 <div style={{ background: dark ? '#0d1117' : '#e2e8f0', borderRadius: 8, height: 10, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: 8, width: `${joursRestants / 30 * 100}%`, background: joursRestants > 7 ? 'linear-gradient(90deg,#6366f1,#22c55e)' : 'linear-gradient(90deg,#f59e0b,#ef4444)', transition: 'width 0.5s ease' }} />
+                  <div style={{ height: '100%', borderRadius: 8, width: `${(joursRestants / 30) * 100}%`, background: joursRestants > 7 ? 'linear-gradient(90deg,#6366f1,#22c55e)' : 'linear-gradient(90deg,#f59e0b,#ef4444)', transition: 'width 0.5s ease' }} />
                 </div>
               </div>
             )}
           </div>
 
+          {/* STATISTIQUES */}
           <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
             <h3 style={{ marginBottom: 20 }}>📊 Mes statistiques</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
@@ -811,48 +928,121 @@ function App() {
             </div>
           </div>
 
+          {/* PARAMÈTRES AVANCÉS */}
           <div style={{ borderRadius: 16, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-            <h3 style={{ marginBottom: 20 }}>⚙️ Paramètres avancés</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div><div style={{ fontWeight: 600 }}>🔔 Notifications</div><div style={{ fontSize: 12, opacity: 0.6 }}>Alertes réponses & messages</div></div>
-                <button className="btn btn-ghost" onClick={demanderNotifications} style={{ fontSize: 12 }}>
-                  {notifPermission === 'granted' ? '✅ Activées' : 'Activer'}
-                </button>
+            <h3 style={{ marginBottom: 24 }}>⚙️ Paramètres avancés</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* 🔔 NOTIFICATIONS */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>🔔 Notifications</div>
+                  <div style={{ fontSize: 12, opacity: 0.6 }}>Alertes réponses & messages</div>
+                </div>
+                {notifPermission === 'granted'
+                  ? <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 700, background: '#22c55e22', border: '1px solid #22c55e44', borderRadius: 20, padding: '6px 14px' }}>✅ Activées</span>
+                  : notifPermission === 'denied'
+                    ? <span style={{ fontSize: 12, color: '#ef4444', background: '#ef444411', border: '1px solid #ef444444', borderRadius: 20, padding: '6px 14px' }}>🚫 Bloquées (navigateur)</span>
+                    : <button className="btn btn-primary" onClick={demanderNotifications} style={{ fontSize: 13, padding: '8px 18px' }}>Activer</button>
+                }
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div><div style={{ fontWeight: 600 }}>💾 IPFS Backup</div><div style={{ fontSize: 12, opacity: 0.6 }}>{ipfsCID ? `CID: ${ipfsCID.slice(0, 14)}...` : 'Configurez PINATA_JWT dans App.js'}</div></div>
-                <button className="btn btn-ghost" onClick={() => sauvegarderIPFS({ forums, updatedAt: Date.now() })} disabled={ipfsSaving} style={{ fontSize: 12 }}>
-                  {ipfsSaving ? '⏳' : '📤 Sauvegarder'}
-                </button>
+
+              {/* 💾 IPFS PINATA */}
+              <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: pinataJWT ? 0 : 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (Pinata)</div>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>
+                      {pinataJWT
+                        ? ipfsCID ? `✅ Dernier CID : ${ipfsCID.slice(0, 14)}...` : 'JWT configuré — prêt à sauvegarder'
+                        : 'Configurez votre Pinata JWT'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-ghost" onClick={() => { setNewPinataJWT(pinataJWT); setEditPinataJWT(!editPinataJWT) }} style={{ fontSize: 12 }}>
+                      {editPinataJWT ? '✕ Fermer' : pinataJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
+                    </button>
+                    {pinataJWT && (
+                      <button className="btn btn-primary" onClick={sauvegarderIPFS} disabled={ipfsSaving} style={{ fontSize: 12, padding: '6px 14px' }}>
+                        {ipfsSaving ? '⏳ Envoi...' : '📤 Sauvegarder'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editPinataJWT && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
+                      Créez un JWT sur <a href="https://app.pinata.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>app.pinata.cloud</a> → API Keys → New Key
+                    </div>
+                    <input
+                      value={newPinataJWT}
+                      onChange={e => setNewPinataJWT(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: 8, fontSize: 12 }}
+                      placeholder="eyJhbGci... (votre Pinata JWT)"
+                      type="password"
+                    />
+                    <button className="btn btn-primary" onClick={() => {
+                      if (!newPinataJWT.trim()) { alert('JWT vide !'); return }
+                      setPinataJWT(newPinataJWT.trim())
+                      setEditPinataJWT(false)
+                      alert('✅ Pinata JWT sauvegardé !')
+                    }} style={{ fontSize: 12, padding: '8px 20px' }}>
+                      ✓ Sauvegarder JWT
+                    </button>
+                  </div>
+                )}
+                {ipfsStatus === 'success' && <div style={{ marginTop: 8, fontSize: 12, color: '#22c55e' }}>✅ Sauvegarde IPFS réussie !</div>}
+                {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT Pinata</div>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div><div style={{ fontWeight: 600 }}>🔐 XMTP V3 E2E</div><div style={{ fontSize: 12, opacity: 0.6 }}>Messagerie chiffrée de bout en bout</div></div>
-                <button className="btn btn-ghost" onClick={initXMTP} disabled={xmtpLoading || !!xmtpClient} style={{ fontSize: 12 }}>
-                  {xmtpClient ? '✅ Actif' : xmtpLoading ? '⏳' : 'Activer'}
-                </button>
+
+              {/* 🔐 XMTP */}
+              <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>🔐 XMTP V3 E2E</div>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>
+                      {xmtpClient ? 'Messagerie chiffrée MLS active' : xmtpError ? `Erreur : ${xmtpError.slice(0, 40)}...` : 'Messagerie chiffrée de bout en bout'}
+                    </div>
+                  </div>
+                  {xmtpClient
+                    ? <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 700, background: '#22c55e22', border: '1px solid #22c55e44', borderRadius: 20, padding: '6px 14px' }}>✅ Actif</span>
+                    : <button className="btn btn-primary" onClick={initXMTP} disabled={xmtpLoading} style={{ fontSize: 13, padding: '8px 18px' }}>
+                        {xmtpLoading ? <span className="spinner">Connexion...</span> : 'Activer'}
+                      </button>
+                  }
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div><div style={{ fontWeight: 600 }}>🌐 Unstoppable Domain</div><div style={{ fontSize: 12, opacity: 0.6 }}>{udDomain || 'Aucun domaine .x détecté'}</div></div>
-                <button className="btn btn-ghost" onClick={() => resoudreUD(account).then(d => { if (d) setUdDomain(d); else alert('Aucun domaine .x trouvé pour ce wallet') })} style={{ fontSize: 12 }}>
-                  🔍 Détecter
-                </button>
+
+              {/* 🌐 UNSTOPPABLE DOMAIN */}
+              <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>🌐 Unstoppable Domain</div>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>
+                      {udDomain
+                        ? <span style={{ color: '#6366f1', fontWeight: 700 }}>{udDomain}</span>
+                        : 'Aucun domaine .x détecté pour ce wallet'}
+                    </div>
+                  </div>
+                  <button className="btn btn-ghost" onClick={detecterUD} style={{ fontSize: 13, padding: '8px 18px' }}>
+                    🔍 Détecter
+                  </button>
+                </div>
               </div>
+
             </div>
           </div>
 
           {!estAbonne && (
             <div style={{ textAlign: 'center', marginTop: 8 }}>
               <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo} style={{ fontSize: 16, padding: '14px 36px' }}>
-                {loadingAbo
-                  ? <span className="spinner">Transaction...</span>
-                  : estGratuit ? '🎁 Rejoindre GRATUITEMENT' : `S'abonner ${prixEnETH} ETH ~2€/mois`}
+                {loadingAbo ? <span className="spinner">Transaction...</span> : estGratuit ? '🎁 Rejoindre GRATUITEMENT' : `S'abonner ${prixEnETH} ETH ~2€/mois`}
               </button>
             </div>
           )}
           <div style={{ textAlign: 'center', marginTop: 24, opacity: 0.5, fontSize: 13 }}>
             <a href={`https://etherscan.io/address/${account}`} target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>
-              Voir sur Etherscan
+              Voir sur Etherscan Mainnet
             </a>
           </div>
         </div>
@@ -918,9 +1108,7 @@ function App() {
           <div className="sort-bar">
             <span style={{ fontSize: 13, opacity: 0.6 }}>Trier par </span>
             {[['date', 'Plus récents'], ['popular', 'Populaires'], ['replies', 'Plus de réponses']].map(([val, label]) => (
-              <button key={val} className={`sort-btn ${sortBy === val ? 'active' : ''}`} onClick={() => { setSortBy(val); setCurrentPage(1) }}>
-                {label}
-              </button>
+              <button key={val} className={`sort-btn ${sortBy === val ? 'active' : ''}`} onClick={() => { setSortBy(val); setCurrentPage(1) }}>{label}</button>
             ))}
           </div>
           {topicsPaginated.length === 0
@@ -997,7 +1185,8 @@ function App() {
             <h3 style={{ marginBottom: 16 }}>✍️ Votre réponse</h3>
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez MetaMask pour répondre</p>}
             {account && !estAbonne && <p style={{ color: '#f59e0b', marginBottom: 12, fontSize: 14 }}>Abonnez-vous pour répondre</p>}
-            <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4} style={{ ...inputStyle, resize: 'vertical' }} disabled={!estAbonne} />
+            <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4}
+              style={{ ...inputStyle, resize: 'vertical' }} disabled={!estAbonne} />
             <button className="btn btn-primary" onClick={posterReponse} style={{ padding: '12px 28px' }} disabled={!estAbonne || !account}>
               Poster la réponse
             </button>
