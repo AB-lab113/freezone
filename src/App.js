@@ -392,7 +392,7 @@ function App() {
       const ethersSigner = await provider.getSigner()
       const address = await ethersSigner.getAddress()
       const xmtpSigner = {
-        getAddress: async () => address,
+        getIdentifier: async () => ({ identifier: address.toLowerCase(), identifierKind: 'Ethereum' }),
         signMessage: async (message) => {
           const sig = await ethersSigner.signMessage(
             typeof message === 'string' ? message : ethers.toUtf8String(message)
