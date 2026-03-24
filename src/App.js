@@ -3,6 +3,23 @@ import { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
 import { Client } from '@xmtp/browser-sdk'
 import ForumAboABI from './ForumAbo.json'
+import { createWeb3Modal, defaultConfig, useWeb3Modal, useWeb3ModalProvider, useWeb3ModalAccount } from '@web3modal/ethers/react'
+
+const projectId = 'c3a8790d-1022-4ff0-96d7-de5cc821fac4'
+const mainnet = {
+  chainId: 1, name: 'Ethereum', currency: 'ETH',
+  explorerUrl: 'https://etherscan.io',
+  rpcUrl: 'https://eth.llamarpc.com'
+}
+createWeb3Modal({
+  ethersConfig: defaultConfig({ metadata: {
+    name: 'FreeZone', description: 'Forum décentralisé',
+    url: 'https://freezone-g8rq.ipfs.4everland.app',
+    icons: ['https://freezone-g8rq.ipfs.4everland.app/favicon.ico']
+  }}),
+  chains: [mainnet],
+  projectId
+})
 
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 const MAINNET_CHAIN_ID = 1n
@@ -74,6 +91,9 @@ const getPseudoFromStorage = () => {
 }
 
 function App() {
+  const { open } = useWeb3Modal()
+  const { address, isConnected } = useWeb3ModalAccount()
+  const { walletProvider } = useWeb3ModalProvider()
 
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
@@ -141,10 +161,10 @@ function App() {
   const [xmtpActiveConv, setXmtpActiveConv] = useState(null)
   const [xmtpMessages, setXmtpMessages] = useState([])
 
-  // ─── IPFS / PINATA ───
-  const [pinataJWT, setPinataJWT] = useState(() => localStorage.getItem('zonefree-pinata-jwt') || '')
-  const [editPinataJWT, setEditPinataJWT] = useState(false)
-  const [newPinataJWT, setNewPinataJWT] = useState('')
+  // ─── IPFS / 4EVERLAND ───
+  const [4EVERLANDJWT, set4EVERLANDJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
+  const [edit4EVERLANDJWT, setEdit4EVERLANDJWT] = useState(false)
+  const [new4EVERLANDJWT, setNew4EVERLANDJWT] = useState('')
   const [ipfsSaving, setIpfsSaving] = useState(false)
   const [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
   const [ipfsStatus, setIpfsStatus] = useState(null)
@@ -155,6 +175,18 @@ function App() {
   )
 
   // ═══════════════════ EFFECTS ═══════════════════
+  useEffect(() => {
+  if (isConnected && address && address !== account) {
+    setAccount(address)
+    const provider = new ethers.BrowserProvider(walletProvider)
+    verifierAbonnement(address, provider)
+  }
+  if (!isConnected && account) {
+    setAccount(null)
+    setEstAbonne(false)
+  }
+}, [isConnected, address])
+
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
@@ -166,8 +198,8 @@ function App() {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
   useEffect(() => {
-    if (pinataJWT) localStorage.setItem('zonefree-pinata-jwt', pinataJWT)
-  }, [pinataJWT])
+    if (4EVERLANDJWT) localStorage.setItem('zonefree-4EVERLAND-jwt', 4EVERLANDJWT)
+  }, [4EVERLANDJWT])
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
   const demanderNotifications = async () => {
@@ -225,26 +257,26 @@ function App() {
     }
   }
 
-  // ═══════════════════ IPFS / PINATA ═══════════════════
+  // ═══════════════════ IPFS / 4EVERLAND ═══════════════════
   const sauvegarderIPFS = async () => {
-    if (!pinataJWT) {
-      alert('Configurez d\'abord votre Pinata JWT dans les paramètres !')
-      setEditPinataJWT(true)
+    if (!4EVERLANDJWT) {
+      alert('Configurez d\'abord votre 4EVERLAND JWT dans les paramètres !')
+      setEdit4EVERLANDJWT(true)
       return
     }
     setIpfsSaving(true)
     setIpfsStatus(null)
     try {
       const data = { forums, updatedAt: Date.now(), version: '1.0' }
-      const r = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${pinataJWT}`
+          'Authorization': `Bearer ${4EVERLANDJWT}`
         },
         body: JSON.stringify({
-          pinataContent: data,
-          pinataMetadata: { name: `ZoneFree-backup-${Date.now()}` }
+          4EVERLANDContent: data,
+          4EVERLANDMetadata: { name: `ZoneFree-backup-${Date.now()}` }
         })
       })
       if (!r.ok) {
@@ -260,19 +292,19 @@ function App() {
       alert(`✅ Sauvegarde IPFS réussie !\nCID: ${cid}`)
     } catch (e) {
       setIpfsStatus('error')
-      alert(`❌ Erreur IPFS Pinata :\n${e.message}\n\nVérifiez votre JWT Pinata.`)
+      alert(`❌ Erreur IPFS 4EVERLAND :\n${e.message}\n\nVérifiez votre JWT 4EVERLAND.`)
     } finally {
       setIpfsSaving(false)
     }
   }
 
   const sauvegarderIPFSAuto = async (data) => {
-    if (!pinataJWT) return null
+    if (!4EVERLANDJWT) return null
     try {
-      const r = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${pinataJWT}` },
-        body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${4EVERLANDJWT}` },
+        body: JSON.stringify({ 4EVERLANDContent: data, 4EVERLANDMetadata: { name: 'ZoneFree-' + Date.now() } })
       })
       if (!r.ok) return null
       const res = await r.json()
@@ -626,7 +658,10 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={connectWallet}>Connecter</button>
+            <button className="btn btn-wallet" onClick={() => open()}>
+            {isConnected ? shortAddr(address) : 'Connecter'}
+            </button>
+
           )}
         </div>
       </header>
@@ -948,52 +983,52 @@ function App() {
                 }
               </div>
 
-              {/* 💾 IPFS PINATA */}
+              {/* 💾 IPFS 4EVERLAND */}
               <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: pinataJWT ? 0 : 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4EVERLANDJWT ? 0 : 12 }}>
                   <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (Pinata)</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (4EVERLAND)</div>
                     <div style={{ fontSize: 12, opacity: 0.6 }}>
-                      {pinataJWT
+                      {4EVERLANDJWT
                         ? ipfsCID ? `✅ Dernier CID : ${ipfsCID.slice(0, 14)}...` : 'JWT configuré — prêt à sauvegarder'
-                        : 'Configurez votre Pinata JWT'}
+                        : 'Configurez votre 4EVERLAND JWT'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={() => { setNewPinataJWT(pinataJWT); setEditPinataJWT(!editPinataJWT) }} style={{ fontSize: 12 }}>
-                      {editPinataJWT ? '✕ Fermer' : pinataJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
+                    <button className="btn btn-ghost" onClick={() => { setNew4EVERLANDJWT(4EVERLANDJWT); setEdit4EVERLANDJWT(!edit4EVERLANDJWT) }} style={{ fontSize: 12 }}>
+                      {edit4EVERLANDJWT ? '✕ Fermer' : 4EVERLANDJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
                     </button>
-                    {pinataJWT && (
+                    {4EVERLANDJWT && (
                       <button className="btn btn-primary" onClick={sauvegarderIPFS} disabled={ipfsSaving} style={{ fontSize: 12, padding: '6px 14px' }}>
                         {ipfsSaving ? '⏳ Envoi...' : '📤 Sauvegarder'}
                       </button>
                     )}
                   </div>
                 </div>
-                {editPinataJWT && (
+                {edit4EVERLANDJWT && (
                   <div style={{ marginTop: 12 }}>
                     <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
-                      Créez un JWT sur <a href="https://app.pinata.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>app.pinata.cloud</a> → API Keys → New Key
+                      Créez un JWT sur <a href="https://app.4EVERLAND.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>app.4EVERLAND.cloud</a> → API Keys → New Key
                     </div>
                     <input
-                      value={newPinataJWT}
-                      onChange={e => setNewPinataJWT(e.target.value)}
+                      value={new4EVERLANDJWT}
+                      onChange={e => setNew4EVERLANDJWT(e.target.value)}
                       style={{ ...inputStyle, marginBottom: 8, fontSize: 12 }}
-                      placeholder="eyJhbGci... (votre Pinata JWT)"
+                      placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
                       type="password"
                     />
                     <button className="btn btn-primary" onClick={() => {
-                      if (!newPinataJWT.trim()) { alert('JWT vide !'); return }
-                      setPinataJWT(newPinataJWT.trim())
-                      setEditPinataJWT(false)
-                      alert('✅ Pinata JWT sauvegardé !')
+                      if (!new4EVERLANDJWT.trim()) { alert('JWT vide !'); return }
+                      set4EVERLANDJWT(new4EVERLANDJWT.trim())
+                      setEdit4EVERLANDJWT(false)
+                      alert('✅ 4EVERLAND JWT sauvegardé !')
                     }} style={{ fontSize: 12, padding: '8px 20px' }}>
                       ✓ Sauvegarder JWT
                     </button>
                   </div>
                 )}
                 {ipfsStatus === 'success' && <div style={{ marginTop: 8, fontSize: 12, color: '#22c55e' }}>✅ Sauvegarde IPFS réussie !</div>}
-                {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT Pinata</div>}
+                {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT 4EVERLAND</div>}
               </div>
 
               {/* 🔐 XMTP */}
