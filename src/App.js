@@ -7,7 +7,8 @@ import ForumAboABI from './ForumAbo.json'
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 const MAINNET_CHAIN_ID = 1n
 const TOPICS_PAR_PAGE = 5
-const IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
+const IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
+
 
 const FORUMS_INIT = [
   {
