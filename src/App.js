@@ -162,9 +162,9 @@ function App() {
   const [xmtpMessages, setXmtpMessages] = useState([])
 
   // ─── IPFS / 4EVERLAND ───
-  const [4EVERLANDJWT, set4EVERLANDJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
-  const [edit4EVERLANDJWT, setEdit4EVERLANDJWT] = useState(false)
-  const [new4EVERLANDJWT, setNew4EVERLANDJWT] = useState('')
+  const [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
+  const [editeverlandJWT, setEditeverlandJWT] = useState(false)
+  const [neweverlandJWT, setNeweverlandJWT] = useState('')
   const [ipfsSaving, setIpfsSaving] = useState(false)
   const [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
   const [ipfsStatus, setIpfsStatus] = useState(null)
@@ -198,8 +198,8 @@ function App() {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
   useEffect(() => {
-    if (4EVERLANDJWT) localStorage.setItem('zonefree-4EVERLAND-jwt', 4EVERLANDJWT)
-  }, [4EVERLANDJWT])
+    if (everlandJWT) localStorage.setItem('zonefree-4EVERLAND-jwt', everlandJWT)
+  }, [everlandJWT])
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
   const demanderNotifications = async () => {
@@ -259,9 +259,9 @@ function App() {
 
   // ═══════════════════ IPFS / 4EVERLAND ═══════════════════
   const sauvegarderIPFS = async () => {
-    if (!4EVERLANDJWT) {
+    if (!everlandJWT) {
       alert('Configurez d\'abord votre 4EVERLAND JWT dans les paramètres !')
-      setEdit4EVERLANDJWT(true)
+      setEditeverlandJWT(true)
       return
     }
     setIpfsSaving(true)
@@ -272,7 +272,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${4EVERLANDJWT}`
+          'Authorization': `Bearer ${everlandJWT}`
         },
         body: JSON.stringify({
           4EVERLANDContent: data,
@@ -299,11 +299,11 @@ function App() {
   }
 
   const sauvegarderIPFSAuto = async (data) => {
-    if (!4EVERLANDJWT) return null
+    if (!everlandJWT) return null
     try {
       const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${4EVERLANDJWT}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
         body: JSON.stringify({ 4EVERLANDContent: data, 4EVERLANDMetadata: { name: 'ZoneFree-' + Date.now() } })
       })
       if (!r.ok) return null
@@ -985,42 +985,42 @@ function App() {
 
               {/* 💾 IPFS 4EVERLAND */}
               <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4EVERLANDJWT ? 0 : 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: everlandJWT ? 0 : 12 }}>
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (4EVERLAND)</div>
                     <div style={{ fontSize: 12, opacity: 0.6 }}>
-                      {4EVERLANDJWT
+                      {everlandJWT
                         ? ipfsCID ? `✅ Dernier CID : ${ipfsCID.slice(0, 14)}...` : 'JWT configuré — prêt à sauvegarder'
                         : 'Configurez votre 4EVERLAND JWT'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={() => { setNew4EVERLANDJWT(4EVERLANDJWT); setEdit4EVERLANDJWT(!edit4EVERLANDJWT) }} style={{ fontSize: 12 }}>
-                      {edit4EVERLANDJWT ? '✕ Fermer' : 4EVERLANDJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
+                    <button className="btn btn-ghost" onClick={() => { setNeweverlandJWT(everlandJWT); setEditeverlandJWT(!editeverlandJWT) }} style={{ fontSize: 12 }}>
+                      {editeverlandJWT ? '✕ Fermer' : everlandJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
                     </button>
-                    {4EVERLANDJWT && (
+                    {everlandJWT && (
                       <button className="btn btn-primary" onClick={sauvegarderIPFS} disabled={ipfsSaving} style={{ fontSize: 12, padding: '6px 14px' }}>
                         {ipfsSaving ? '⏳ Envoi...' : '📤 Sauvegarder'}
                       </button>
                     )}
                   </div>
                 </div>
-                {edit4EVERLANDJWT && (
+                {editeverlandJWT && (
                   <div style={{ marginTop: 12 }}>
                     <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
                       Créez un JWT sur <a href="https://app.4EVERLAND.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>app.4EVERLAND.cloud</a> → API Keys → New Key
                     </div>
                     <input
-                      value={new4EVERLANDJWT}
-                      onChange={e => setNew4EVERLANDJWT(e.target.value)}
+                      value={neweverlandJWT}
+                      onChange={e => setNeweverlandJWT(e.target.value)}
                       style={{ ...inputStyle, marginBottom: 8, fontSize: 12 }}
                       placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
                       type="password"
                     />
                     <button className="btn btn-primary" onClick={() => {
-                      if (!new4EVERLANDJWT.trim()) { alert('JWT vide !'); return }
-                      set4EVERLANDJWT(new4EVERLANDJWT.trim())
-                      setEdit4EVERLANDJWT(false)
+                      if (!neweverlandJWT.trim()) { alert('JWT vide !'); return }
+                      seteverlandJWT(neweverlandJWT.trim())
+                      setEditeverlandJWT(false)
                       alert('✅ 4EVERLAND JWT sauvegardé !')
                     }} style={{ fontSize: 12, padding: '8px 20px' }}>
                       ✓ Sauvegarder JWT
