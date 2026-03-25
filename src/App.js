@@ -275,8 +275,8 @@ function App() {
           'Authorization': `Bearer ${everlandJWT}`
         },
         body: JSON.stringify({
-          4EVERLANDContent: data,
-          4EVERLANDMetadata: { name: `ZoneFree-backup-${Date.now()}` }
+          IpfsContent: data,
+          IpfsContent: { name: `ZoneFree-backup-${Date.now()}` }
         })
       })
       if (!r.ok) {
@@ -304,7 +304,7 @@ function App() {
       const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
-        body: JSON.stringify({ 4EVERLANDContent: data, 4EVERLANDMetadata: { name: 'ZoneFree-' + Date.now() } })
+        body: JSON.stringify({ IpfsContent: data, IpfsContent: { name: 'ZoneFree-' + Date.now() } })
       })
       if (!r.ok) return null
       const res = await r.json()
