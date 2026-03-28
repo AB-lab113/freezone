@@ -106,6 +106,7 @@ const getPseudoFromStorage = () => {
     return stored
   }
 }
+function App() {
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('zonefree-dark')
