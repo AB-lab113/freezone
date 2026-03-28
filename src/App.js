@@ -426,72 +426,72 @@ const getPseudoFromStorage = () => {
     ? messages.reduce((t, c) => t + c.msgs.filter(m => m.to === shortAddr(account) && !m.read).length, 0)
     : 0
 
-  // ═══════════════════ XMTP V3 ═══════════════════
+   // ═══════════════════ XMTP V3 ═══════════════════
   const initXMTP = async () => {
-  if (!account) { alert('Connectez MetaMask d\'abord !'); return }
-  setXmtpLoading(true)
-  setXmtpError(null)
-  try {
-    const provider = new ethers.BrowserProvider(window.ethereum)
-    const ethersSigner = await provider.getSigner()
-    const address = await ethersSigner.getAddress()
-    const xmtpSigner = {
-      getIdentifier: () => ({ identifier: address.toLowerCase(), identifierKind: 'Ethereum' }),
-      signMessage: async (message) => {
-        const sig = await ethersSigner.signMessage(
-          typeof message === 'string' ? message : ethers.toUtf8String(message)
-        )
-        return ethers.getBytes(sig)
+    if (!account) { alert('Connectez MetaMask d\'abord !'); return }
+    setXmtpLoading(true)
+    setXmtpError(null)
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const ethersSigner = await provider.getSigner()
+      const address = await ethersSigner.getAddress()
+      const xmtpSigner = {
+        getIdentifier: () => ({ identifier: address.toLowerCase(), identifierKind: 'Ethereum' }),
+        signMessage: async (message) => {
+          const sig = await ethersSigner.signMessage(
+            typeof message === 'string' ? message : ethers.toUtf8String(message)
+          )
+          return ethers.getBytes(sig)
+        }
       }
+      const client = await Client.create(xmtpSigner, { env: 'production' })
+      setXmtpClient(client)
+      await client.conversations.sync()
+      const convList = await client.conversations.list()
+      setXmtpConversations(convList)
+      envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E chiffrée activée !')
+    } catch (e) {
+      console.error('XMTP:', e)
+      const msg = e.message || 'Erreur inconnue'
+      setXmtpError(msg)
+      alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
+    } finally {
+      setXmtpLoading(false)
     }
-    const client = await Client.create(xmtpSigner, { env: 'production' })
-    setXmtpClient(client)
-    await client.conversations.sync()
-    const convList = await client.conversations.list()
-    setXmtpConversations(convList)
-    envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E chiffrée activée !')
-  } catch (e) {
-    console.error('XMTP:', e)
-    const msg = e.message || 'Erreur inconnue'
-    setXmtpError(msg)
-    alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
-  } finally {
-    setXmtpLoading(false)
   }
-}
 
-const demarrerConversationXMTP = async () => {
-  if (!xmtpClient || !newMessageTo.trim()) return
-  try {
-    const dm = await xmtpClient.conversations.findOrCreateDm({
-      identifier: newMessageTo.trim().toLowerCase(),
-      identifierKind: 'Ethereum'
-    })
-    setXmtpActiveConv(dm)
-    await dm.sync()
-    setXmtpMessages(await dm.messages())
-    setShowNewConversation(false); setNewMessageTo(''); setPage('xmtp-conversation')
-  } catch (e) {
-    alert('Adresse invalide ou non enregistrée sur XMTP.\n' + e.message)
+  const demarrerConversationXMTP = async () => {
+    if (!xmtpClient || !newMessageTo.trim()) return
+    try {
+      const dm = await xmtpClient.conversations.findOrCreateDm({
+        identifier: newMessageTo.trim().toLowerCase(),
+        identifierKind: 'Ethereum'
+      })
+      setXmtpActiveConv(dm)
+      await dm.sync()
+      setXmtpMessages(await dm.messages())
+      setShowNewConversation(false); setNewMessageTo(''); setPage('xmtp-conversation')
+    } catch (e) {
+      alert('Adresse invalide ou non enregistrée sur XMTP.\n' + e.message)
+    }
   }
-}
 
-const envoyerMessageXMTP = async () => {
-  if (!xmtpActiveConv || !newMessage.trim()) return
-  try {
-    await xmtpActiveConv.sendText(newMessage.trim())   // ✅ sendText, pas send
-    setNewMessage('')
-    await xmtpActiveConv.sync()
-    setXmtpMessages(await xmtpActiveConv.messages())
-  } catch (e) { alert('Erreur envoi XMTP: ' + e.message) }
-}
+  const envoyerMessageXMTP = async () => {
+    if (!xmtpActiveConv || !newMessage.trim()) return
+    try {
+      await xmtpActiveConv.sendText(newMessage.trim())
+      setNewMessage('')
+      await xmtpActiveConv.sync()
+      setXmtpMessages(await xmtpActiveConv.messages())
+    } catch (e) { alert('Erreur envoi XMTP: ' + e.message) }
+  }
 
-const ouvrirConversationXMTP = async (conv) => {
-  setXmtpActiveConv(conv)
-  await conv.sync()
-  setXmtpMessages(await conv.messages())
-  setPage('xmtp-conversation')
-}
+  const ouvrirConversationXMTP = async (conv) => {
+    setXmtpActiveConv(conv)
+    await conv.sync()
+    setXmtpMessages(await conv.messages())
+    setPage('xmtp-conversation')
+  }
 
   // ═══════════════════ BLOCKCHAIN ═══════════════════
   const fetchPrix = async (provider) => {
