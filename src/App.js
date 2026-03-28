@@ -77,24 +77,35 @@ const FORUMS_INIT = [
 
 // ─── MIGRATION PSEUDO ───
 const getPseudoFromStorage = () => {
-  const stored = localStorage.getItem('zonefree-pseudo') || ''
+  // 1. Cherche d'abord dans la nouvelle clé
+  let stored = localStorage.getItem('zonefree-pseudo') || ''
+
+  // 2. Fallback sur l'ancienne clé 'pseudo' (migration)
+  if (!stored) {
+    const oldStored = localStorage.getItem('pseudo') || ''
+    if (oldStored) {
+      stored = oldStored
+      // Nettoie l'ancienne clé après migration
+      localStorage.removeItem('pseudo')
+    }
+  }
+
   if (!stored) return ''
+
   try {
     const parsed = JSON.parse(stored)
     if (typeof parsed === 'object' && parsed !== null) {
-      return String(Object.values(parsed)[0] || '')
+      // Ancien format {"0xADDR": "monPseudo"} → extrait la valeur
+      const valeur = String(Object.values(parsed)[0] || '')
+      // Sauvegarde en nouveau format propre
+      localStorage.setItem('zonefree-pseudo', valeur)
+      return valeur
     }
     return stored
   } catch (e) {
     return stored
   }
 }
-
-function App() {
-  const { open } = useWeb3Modal()
-  const { address, isConnected } = useWeb3ModalAccount()
-  const { walletProvider } = useWeb3ModalProvider()
-
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('zonefree-dark')
