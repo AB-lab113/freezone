@@ -437,30 +437,34 @@ function App() {
    // ═══════════════════ XMTP V3 ═══════════════════
   const initXMTP = async () => {
     if (!account) { alert('Connectez votre wallet d\'abord !'); return }
+    if (!walletProvider) { alert('Provider wallet introuvable. Reconnectez votre wallet.'); return }
     setXmtpLoading(true)
     setXmtpError(null)
     try {
-      const provider = new ethers.BrowserProvider(walletProvider)
-      const ethersSigner = await provider.getSigner()
-      const signerAddress = await ethersSigner.getAddress()
+      console.log('XMTP: init avec address =', address, 'walletProvider =', walletProvider)
       const xmtpSigner = {
-        getIdentifier: () => ({ identifier: signerAddress.toLowerCase(), identifierKind: 'Eip191' }),
-        signMessage: async (message) => {
-          const sig = await ethersSigner.signMessage(
-            message instanceof Uint8Array ? ethers.toUtf8String(message) : message
-          )
+        getIdentifier: () => ({ identifier: address, identifierKind: 0 }),
+        signMessage: async (msg) => {
+          console.log('XMTP: signMessage appelé avec', msg)
+          const sig = await walletProvider.send('personal_sign', [
+            ethers.hexlify(ethers.toUtf8Bytes(msg)),
+            address
+          ])
+          console.log('XMTP: signature =', sig)
           return ethers.getBytes(sig)
         }
       }
+      console.log('XMTP: appel Client.create...')
       const client = await Client.create(xmtpSigner, { env: 'production' })
+      console.log('XMTP: client créé', client)
       setXmtpClient(client)
       await client.conversations.sync()
       const convList = await client.conversations.list()
       setXmtpConversations(convList)
       envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E chiffrée activée !')
     } catch (e) {
-      console.error('XMTP:', e)
-      const msg = e.message || 'Erreur inconnue'
+      console.error('XMTP erreur complète:', e)
+      const msg = e?.message || String(e) || 'Erreur inconnue'
       setXmtpError(msg)
       alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
     } finally {
@@ -680,7 +684,7 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
+            <button className="btn btn-wallet" onClick={() => openModal()}>
               {isConnected ? shortAddr(address) : 'Connecter'}
             </button>
 
