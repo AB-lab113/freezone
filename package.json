@@ -28,7 +28,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "postinstall": "mkdir -p node_modules/base-org/account && echo '{\"main\":\"index.js\"}' > node_modules/base-org/account/package.json && echo 'module.exports = {}' > node_modules/base-org/account/index.js"
+    "postinstall": "node -e \"const fs=require('fs');const p='node_modules/@base-org/account';fs.mkdirSync(p,{recursive:true});fs.writeFileSync(p+'/package.json',JSON.stringify({main:'index.js'}));fs.writeFileSync(p+'/index.js','module.exports={}');\""
   },
   "eslintConfig": {
     "extends": [
