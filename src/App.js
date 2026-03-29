@@ -182,6 +182,7 @@ function App() {
   const [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
   const [editeverlandJWT, setEditeverlandJWT] = useState(false)
   const [neweverlandJWT, setNeweverlandJWT] = useState('')
+  const [showJWTModal, setShowJWTModal] = useState(false)
   const [ipfsSaving, setIpfsSaving] = useState(false)
   const [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
   const [ipfsStatus, setIpfsStatus] = useState(null)
@@ -264,8 +265,9 @@ function App() {
   }
 
   const detecterUD = async () => {
-    if (!account) { alert('Connectez MetaMask d\'abord !'); return }
-    const domain = await resoudreUD(account)
+    const addr = account || address
+    if (!addr) { alert('Connectez votre wallet d\'abord !'); return }
+    const domain = await resoudreUD(addr)
     if (domain) {
       setUdDomain(domain)
       alert(`✅ Domaine trouvé : ${domain}`)
@@ -434,18 +436,18 @@ function App() {
 
    // ═══════════════════ XMTP V3 ═══════════════════
   const initXMTP = async () => {
-    if (!account) { alert('Connectez MetaMask d\'abord !'); return }
+    if (!account) { alert('Connectez votre wallet d\'abord !'); return }
     setXmtpLoading(true)
     setXmtpError(null)
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum)
+      const provider = new ethers.BrowserProvider(walletProvider)
       const ethersSigner = await provider.getSigner()
-      const address = await ethersSigner.getAddress()
+      const signerAddress = await ethersSigner.getAddress()
       const xmtpSigner = {
-        getIdentifier: () => ({ identifier: address.toLowerCase(), identifierKind: 'Ethereum' }),
+        getIdentifier: () => ({ identifier: signerAddress.toLowerCase(), identifierKind: 'Eip191' }),
         signMessage: async (message) => {
           const sig = await ethersSigner.signMessage(
-            typeof message === 'string' ? message : ethers.toUtf8String(message)
+            message instanceof Uint8Array ? ethers.toUtf8String(message) : message
           )
           return ethers.getBytes(sig)
         }
@@ -678,8 +680,8 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={() => openModal()}>
-            {isConnected ? shortAddr(address) : 'Connecter'}
+            <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
+              {isConnected ? shortAddr(address) : 'Connecter'}
             </button>
 
           )}
@@ -1005,7 +1007,7 @@ function App() {
 
               {/* 💾 IPFS 4EVERLAND */}
               <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: everlandJWT ? 0 : 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (4EVERLAND)</div>
                     <div style={{ fontSize: 12, opacity: 0.6 }}>
@@ -1015,8 +1017,8 @@ function App() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={() => { setNeweverlandJWT(everlandJWT); setEditeverlandJWT(!editeverlandJWT) }} style={{ fontSize: 12 }}>
-                      {editeverlandJWT ? '✕ Fermer' : everlandJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
+                    <button className="btn btn-ghost" onClick={() => { setNeweverlandJWT(everlandJWT); setShowJWTModal(true) }} style={{ fontSize: 12 }}>
+                      {everlandJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
                     </button>
                     {everlandJWT && (
                       <button className="btn btn-primary" onClick={sauvegarderIPFS} disabled={ipfsSaving} style={{ fontSize: 12, padding: '6px 14px' }}>
@@ -1025,28 +1027,6 @@ function App() {
                     )}
                   </div>
                 </div>
-                {editeverlandJWT && (
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>
-                      Créez un JWT sur <a href="https://app.4EVERLAND.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>app.4EVERLAND.cloud</a> → API Keys → New Key
-                    </div>
-                    <input
-                      value={neweverlandJWT}
-                      onChange={e => setNeweverlandJWT(e.target.value)}
-                      style={{ ...inputStyle, marginBottom: 8, fontSize: 12 }}
-                      placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
-                      type="password"
-                    />
-                    <button className="btn btn-primary" onClick={() => {
-                      if (!neweverlandJWT.trim()) { alert('JWT vide !'); return }
-                      seteverlandJWT(neweverlandJWT.trim())
-                      setEditeverlandJWT(false)
-                      alert('✅ 4EVERLAND JWT sauvegardé !')
-                    }} style={{ fontSize: 12, padding: '8px 20px' }}>
-                      ✓ Sauvegarder JWT
-                    </button>
-                  </div>
-                )}
                 {ipfsStatus === 'success' && <div style={{ marginTop: 8, fontSize: 12, color: '#22c55e' }}>✅ Sauvegarde IPFS réussie !</div>}
                 {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT 4EVERLAND</div>}
               </div>
@@ -1281,6 +1261,45 @@ function App() {
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-primary" onClick={creerTopic} style={{ flex: 1 }}>Publier</button>
               <button className="btn btn-ghost" onClick={() => setShowNewTopic(false)} style={{ flex: 1 }}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ MODAL JWT 4EVERLAND ══════════════ */}
+      {showJWTModal && (
+        <div style={{ position: 'fixed', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: dark ? '#161b22' : 'white', borderRadius: 16, padding: 32, width: 460, border: '1.5px solid #6366f1' }}>
+            <h2 style={{ marginBottom: 8, color: '#6366f1' }}>🔑 4EVERLAND JWT</h2>
+            <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
+              Créez un JWT sur{' '}
+              <a href="https://app.4everland.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>
+                app.4everland.cloud
+              </a>{' '}
+              → API Keys → New Key
+            </p>
+            <input
+              value={neweverlandJWT}
+              onChange={e => setNeweverlandJWT(e.target.value)}
+              style={{ ...inputStyle, fontSize: 13 }}
+              placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
+              type="password"
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => {
+                if (!neweverlandJWT.trim()) { alert('JWT vide !'); return }
+                const jwt = neweverlandJWT.trim()
+                seteverlandJWT(jwt)
+                localStorage.setItem('zonefree-4EVERLAND-jwt', jwt)
+                setShowJWTModal(false)
+                alert('✅ JWT sauvegardé !')
+              }}>
+                ✓ Sauvegarder
+              </button>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowJWTModal(false)}>
+                Annuler
+              </button>
             </div>
           </div>
         </div>
