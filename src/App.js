@@ -107,6 +107,11 @@ const getPseudoFromStorage = () => {
   }
 }
 function App() {
+  // ─── WEB3MODAL HOOKS ───
+  const { open: openModal } = useWeb3Modal()
+  const { isConnected, address } = useWeb3ModalAccount()
+  const { walletProvider } = useWeb3ModalProvider()
+
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('zonefree-dark')
@@ -673,7 +678,7 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={() => open()}>
+            <button className="btn btn-wallet" onClick={() => openModal()}>
             {isConnected ? shortAddr(address) : 'Connecter'}
             </button>
 
