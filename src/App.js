@@ -199,11 +199,18 @@ function App() {
     const provider = new ethers.BrowserProvider(walletProvider)
     verifierAbonnement(address, provider)
   }
-  if (!isConnected && account) {
+  if (!isConnected && !address && account) {
     setAccount(null)
     setEstAbonne(false)
   }
 }, [isConnected, address])
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (account && walletProvider && !xmtpClient && !xmtpLoading) {
+      initXMTP()
+    }
+  }, [account, walletProvider])
 
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
@@ -211,7 +218,17 @@ function App() {
     document.body.className = dark ? 'dark' : 'light'
   }, [dark])
   useEffect(() => { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
-  useEffect(() => { localStorage.setItem('zonefree-messages', JSON.stringify(messages)) }, [messages])
+  useEffect(() => {
+    try {
+      const msgsSansImages = messages.map(conv => ({
+        ...conv,
+        msgs: conv.msgs.map(m => m.type === 'image' ? { ...m, content: '[image]' } : m)
+      }))
+      localStorage.setItem('zonefree-messages', JSON.stringify(msgsSansImages))
+    } catch (e) {
+      console.warn('localStorage plein', e)
+    }
+  }, [messages])
   useEffect(() => {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
