@@ -97,6 +97,14 @@ function App() {
   const { walletProvider } = useAppKitProvider('eip155')
   const { disconnect } = useDisconnect()
 
+  const disconnectAll = async () => {
+    try { await disconnect() } catch(e) {}
+    setAccount(null)
+    setEstAbonne(false)
+    setXmtpClient(null)
+    setXmtpError(null)
+  }
+
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('zonefree-dark')
@@ -178,17 +186,28 @@ function App() {
   )
 
   // ═══════════════════ EFFECTS ═══════════════════
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-  if (isConnected && address && address !== account) {
-    setAccount(address)
-    const provider = new ethers.BrowserProvider(walletProvider)
-    verifierAbonnement(address, provider)
-  }
-  if (!isConnected && !address && account) {
-    setAccount(null)
-    setEstAbonne(false)
-  }
-}, [isConnected, address])
+    if (isConnected && address && address !== account) {
+      setAccount(address)
+      const provider = new ethers.BrowserProvider(walletProvider)
+      verifierAbonnement(address, provider)
+    }
+    if (!isConnected && !address && account) {
+      setAccount(null)
+      setEstAbonne(false)
+    }
+    // Fallback MetaMask direct si AppKit ne détecte pas
+    if (!isConnected && window.ethereum) {
+      window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+        if (accounts.length > 0 && !account) {
+          setAccount(accounts[0])
+          const provider = new ethers.BrowserProvider(window.ethereum)
+          verifierAbonnement(accounts[0], provider)
+        }
+      }).catch(() => {})
+    }
+  }, [isConnected, address])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -688,6 +707,9 @@ function App() {
           <button className="btn btn-ghost" onClick={() => setPage('profil')} style={{ fontSize: 16 }}>👤</button>
           {account ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button className="btn btn-ghost" onClick={disconnectAll} title="Déconnecter" style={{ fontSize: 14, padding: '6px 10px' }}>
+                ⏏️
+              </button>
               <span className="wallet-addr">{udDomain || pseudo || shortAddr(account)}</span>
               {estAbonne
                 ? <span className="badge-abonne">✓ Abonné</span>
@@ -695,9 +717,6 @@ function App() {
                     {loadingAbo ? <span className="spinner">Transaction...</span> : estGratuit ? '🎁 Gratuit !' : `S'abonner ${prixEnETH} ETH`}
                   </button>
               }
-              <button className="btn btn-ghost" onClick={() => disconnect()} style={{ fontSize: 12, opacity: 0.7, padding: '4px 10px' }}>
-                ⏏️
-              </button>
             </div>
           ) : (
             <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
