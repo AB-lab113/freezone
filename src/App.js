@@ -5,14 +5,22 @@ import { Client } from '@xmtp/browser-sdk'
 import ForumAboABI from './ForumAbo.json'
 import { createAppKit, useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
+import { mainnet } from '@reown/appkit/networks'
 
-const projectId = 'c3a8790d-1022-4ff0-96d7-de5cc821fac4'
 const ethersAdapter = new EthersAdapter()
 createAppKit({
   adapters: [ethersAdapter],
-  networks: [{ id: 'eip155:1', name: 'Ethereum', currency: 'ETH', explorerUrl: 'https://etherscan.io', rpcUrl: 'https://eth.llamarpc.com' }],
-  projectId,
-  metadata: { name: 'FreeZone', description: 'Forum décentralisé', url: 'https://freezone-kappa.vercel.app', icons: [] }
+  networks: [mainnet],
+  projectId: 'c3a8790d-1022-4ff0-96d7-de5cc821fac4',
+  metadata: {
+    name: 'FreeZone',
+    description: 'Forum décentralisé',
+    url: 'https://freezone-kappa.vercel.app',
+    icons: ['https://freezone-kappa.vercel.app/favicon.ico']
+  },
+  features: {
+    analytics: false
+  }
 })
 
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
