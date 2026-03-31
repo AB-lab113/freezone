@@ -3,22 +3,16 @@ import { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
 import { Client } from '@xmtp/browser-sdk'
 import ForumAboABI from './ForumAbo.json'
-import { createWeb3Modal, defaultConfig, useWeb3Modal, useWeb3ModalProvider, useWeb3ModalAccount } from '@web3modal/ethers/react'
+import { createAppKit, useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
+import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 
 const projectId = 'c3a8790d-1022-4ff0-96d7-de5cc821fac4'
-const mainnet = {
-  chainId: 1, name: 'Ethereum', currency: 'ETH',
-  explorerUrl: 'https://etherscan.io',
-  rpcUrl: 'https://eth.llamarpc.com'
-}
-createWeb3Modal({
-  ethersConfig: defaultConfig({ metadata: {
-    name: 'FreeZone', description: 'Forum décentralisé',
-    url: 'https://freezone-g8rq.ipfs.4everland.app',
-    icons: ['https://freezone-g8rq.ipfs.4everland.app/favicon.ico']
-  }}),
-  chains: [mainnet],
-  projectId
+const ethersAdapter = new EthersAdapter()
+createAppKit({
+  adapters: [ethersAdapter],
+  networks: [{ id: 'eip155:1', name: 'Ethereum', currency: 'ETH', explorerUrl: 'https://etherscan.io', rpcUrl: 'https://eth.llamarpc.com' }],
+  projectId,
+  metadata: { name: 'FreeZone', description: 'Forum décentralisé', url: 'https://freezone-kappa.vercel.app', icons: [] }
 })
 
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
@@ -107,10 +101,11 @@ const getPseudoFromStorage = () => {
   }
 }
 function App() {
-  // ─── WEB3MODAL HOOKS ───
-  const { open: openModal } = useWeb3Modal()
-  const { isConnected, address } = useWeb3ModalAccount()
-  const { walletProvider } = useWeb3ModalProvider()
+  // ─── REOWN APPKIT HOOKS ───
+  const { open: openModal } = useAppKit()
+  const { isConnected, address } = useAppKitAccount()
+  const { walletProvider } = useAppKitProvider('eip155')
+  const { disconnect } = useDisconnect()
 
   // ─── THEME ───
   const [dark, setDark] = useState(() => {
@@ -207,8 +202,9 @@ function App() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (account && walletProvider && !xmtpClient && !xmtpLoading) {
-      initXMTP()
+    if (account && walletProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
+      const timer = setTimeout(() => initXMTP(), 1500)
+      return () => clearTimeout(timer)
     }
   }, [account, walletProvider])
 
@@ -709,6 +705,9 @@ function App() {
                     {loadingAbo ? <span className="spinner">Transaction...</span> : estGratuit ? '🎁 Gratuit !' : `S'abonner ${prixEnETH} ETH`}
                   </button>
               }
+              <button className="btn btn-ghost" onClick={() => disconnect()} style={{ fontSize: 12, opacity: 0.7, padding: '4px 10px' }}>
+                ⏏️
+              </button>
             </div>
           ) : (
             <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
