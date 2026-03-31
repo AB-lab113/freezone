@@ -601,7 +601,8 @@ function App() {
     const salon = {
       id: newSalon.name.toLowerCase().replace(/\s+/g, '-'),
       emoji: newSalon.emoji || '💬', name: newSalon.name,
-      description: newSalon.description || 'Nouveau salon', topics: []
+      description: newSalon.description || 'Nouveau salon', topics: [],
+      creator: account
     }
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
   }
@@ -642,6 +643,15 @@ function App() {
       ? { ...f, topics: f.topics.map(t => t.id === topicId ? { ...t, pinned: !t.pinned } : t) }
       : f)
     setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
+  }
+
+  const supprimerSalon = (forumId) => {
+    if (!account || !estAbonne) return
+    const salon = forums.find(f => f.id === forumId)
+    if (!salon) return
+    if (!window.confirm(`Supprimer le salon "${salon.name}" et tous ses topics ?`)) return
+    setForums(forums.filter(f => f.id !== forumId))
+    if (activeForum?.id === forumId) goHome()
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
@@ -701,7 +711,7 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={() => openModal()}>
+            <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
               {isConnected ? shortAddr(address) : 'Connecter'}
             </button>
 
@@ -1141,6 +1151,12 @@ function App() {
                       <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
                       {f.topics.some(t => t.pinned) && <span>📌</span>}
                     </div>
+                    {account && f.creator === account && (
+                      <button onClick={e => { e.stopPropagation(); supprimerSalon(f.id) }}
+                        style={{ marginTop: 8, fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #ef444444', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                        🗑️ Supprimer
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
