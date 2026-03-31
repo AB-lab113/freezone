@@ -6,7 +6,6 @@ import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
-const MAINNET_CHAIN_ID = 1n
 const TOPICS_PAR_PAGE = 5
 const IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
 
@@ -173,7 +172,6 @@ function App() {
 
   // ─── IPFS / 4EVERLAND ───
   const [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
-  const [editeverlandJWT, setEditeverlandJWT] = useState(false)
   const [neweverlandJWT, setNeweverlandJWT] = useState('')
   const [showJWTModal, setShowJWTModal] = useState(false)
   const [ipfsSaving, setIpfsSaving] = useState(false)
@@ -186,7 +184,7 @@ function App() {
   )
 
   // ═══════════════════ EFFECTS ═══════════════════
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (isConnected && address && address !== account) {
       setAccount(address)
@@ -209,13 +207,13 @@ function App() {
     }
   }, [isConnected, address])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (account && walletProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
       const timer = setTimeout(() => initXMTP(), 1500)
       return () => clearTimeout(timer)
     }
   }, [account, walletProvider])
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
@@ -302,7 +300,7 @@ function App() {
   const sauvegarderIPFS = async () => {
     if (!everlandJWT) {
       alert('Configurez d\'abord votre 4EVERLAND JWT dans les paramètres !')
-      setEditeverlandJWT(true)
+      setShowJWTModal(true)
       return
     }
     setIpfsSaving(true)
@@ -316,8 +314,8 @@ function App() {
           'Authorization': `Bearer ${everlandJWT}`
         },
         body: JSON.stringify({
-          IpfsContent: data,
-          IpfsContent: { name: `ZoneFree-backup-${Date.now()}` }
+          pinataContent: data,
+          pinataMetadata: { name: `ZoneFree-backup-${Date.now()}` }
         })
       })
       if (!r.ok) {
@@ -345,7 +343,7 @@ function App() {
       const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
-        body: JSON.stringify({ IpfsContent: data, IpfsContent: { name: 'ZoneFree-' + Date.now() } })
+        body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
       })
       if (!r.ok) return null
       const res = await r.json()
@@ -551,20 +549,6 @@ function App() {
       const domain = await resoudreUD(addr)
       if (domain) setUdDomain(domain)
     } catch (e) { console.error('Abonnement:', e) }
-  }
-
-  const connectWallet = async () => {
-    if (!window.ethereum?.isMetaMask) { alert('Installez MetaMask !'); return }
-    const provider = new ethers.BrowserProvider(window.ethereum)
-    const network = await provider.getNetwork()
-    if (network.chainId !== MAINNET_CHAIN_ID) {
-      alert('Veuillez passer sur le réseau Ethereum Mainnet dans MetaMask !')
-      return
-    }
-    const accounts = await provider.send('eth_requestAccounts', [])
-    setAccount(accounts[0])
-    await verifierAbonnement(accounts[0], provider)
-    if (notifPermission === 'default') demanderNotifications()
   }
 
   const estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
