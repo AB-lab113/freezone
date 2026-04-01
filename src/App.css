@@ -215,7 +215,10 @@ body.light .toast { background: white; color: #1a1a2e; box-shadow: 0 8px 32px #0
 
 @media (max-width: 600px) {
   .header { padding: 0 16px; height: 56px; }
-  .header-actions { gap: 6px; }
+  .header-actions { gap: 4px; }
+  .wallet-addr { display: none; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+  .badge-abonne { font-size: 11px; padding: 4px 8px; }
   .forums-grid { padding: 0 16px 32px; grid-template-columns: 1fr; }
   .hero { padding: 48px 16px 32px; }
   .hero h1 { font-size: 32px; }

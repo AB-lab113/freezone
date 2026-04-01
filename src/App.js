@@ -209,7 +209,7 @@ function App() {
 
   useEffect(() => {
     if (account && walletProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
-      const timer = setTimeout(() => initXMTP(), 1500)
+      const timer = setTimeout(() => initXMTP(), 2500)
       return () => clearTimeout(timer)
     }
   }, [account, walletProvider])
@@ -861,6 +861,14 @@ function App() {
                     : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{m.content}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
+                  {isSent && (
+                    <button onClick={() => {
+                      const updatedMsgs = activeConversation.msgs.filter(msg => msg.id !== m.id)
+                      const updatedConv = { ...activeConversation, msgs: updatedMsgs }
+                      setMessages(prev => prev.map(c => c.key === activeConversation.key ? updatedConv : c))
+                      setActiveConversation(updatedConv)
+                    }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, opacity: 0.5, marginTop: 2 }}>🗑️</button>
+                  )}
                 </div>
               )
             })}
@@ -1163,7 +1171,7 @@ function App() {
                       <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
                       {f.topics.some(t => t.pinned) && <span>📌</span>}
                     </div>
-                    {account && estAbonne && (!f.creator || f.creator === account) && (
+                    {account && estAbonne && f.creator === account && (
                       <button onClick={e => { e.stopPropagation(); supprimerSalon(f.id) }}
                         style={{ marginTop: 8, fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #ef444444', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
                         🗑️ Supprimer
