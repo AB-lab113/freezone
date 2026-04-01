@@ -462,32 +462,50 @@ function App() {
     setXmtpError(null)
     try {
       console.log('XMTP: init avec address =', address, 'walletProvider =', walletProvider)
+      if (!walletProvider) throw new Error('walletProvider manquant')
+
       const xmtpSigner = {
         getIdentifier: () => ({
           identifier: address.toLowerCase(),
           identifierKind: 0
         }),
         signMessage: async (msg) => {
-          const message = msg instanceof Uint8Array
-            ? new TextDecoder().decode(msg)
-            : String(msg)
-          const ethersProvider = new ethers.BrowserProvider(walletProvider)
-          const signer = await ethersProvider.getSigner()
-          const signature = await signer.signMessage(message)
-          return {
-            bytes: ethers.getBytes(signature),
-            type: 'recoverable'
+          console.log('XMTP: signMessage appelé, type msg:', typeof msg, msg instanceof Uint8Array ? 'Uint8Array' : 'autre')
+          try {
+            let messageText
+            if (msg instanceof Uint8Array) {
+              messageText = new TextDecoder().decode(msg)
+            } else if (typeof msg === 'string') {
+              messageText = msg
+            } else {
+              messageText = JSON.stringify(msg)
+            }
+            console.log('XMTP: message à signer:', messageText.substring(0, 100))
+
+            const ethersProvider = new ethers.BrowserProvider(walletProvider)
+            const signer = await ethersProvider.getSigner()
+            const signature = await signer.signMessage(messageText)
+            console.log('XMTP: signature obtenue:', signature.substring(0, 20))
+
+            return ethers.getBytes(signature)
+          } catch (signErr) {
+            console.error('XMTP: signMessage erreur:', signErr)
+            throw signErr
           }
         }
       }
+
       console.log('XMTP: appel Client.create...')
-      const client = await Client.create(xmtpSigner, { env: 'production' })
-      console.log('XMTP: client créé', client)
+      const client = await Client.create(xmtpSigner, {
+        env: 'production',
+        dbEncryptionKey: new Uint8Array(32)
+      })
+      console.log('XMTP: client créé ✅', client)
       setXmtpClient(client)
       await client.conversations.sync()
       const convList = await client.conversations.list()
       setXmtpConversations(convList)
-      envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E chiffrée activée !')
+      envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E activée !')
     } catch (e) {
       console.error('XMTP erreur complète:', e)
       const msg = e?.message || String(e) || 'Erreur inconnue'
