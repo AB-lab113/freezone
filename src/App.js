@@ -465,13 +465,21 @@ function App() {
       const xmtpSigner = {
         getIdentifier: () => ({ identifier: address, identifierKind: 0 }),
         signMessage: async (msg) => {
-          console.log('XMTP: signMessage appelé avec', msg)
-          const sig = await walletProvider.send('personal_sign', [
-            ethers.hexlify(ethers.toUtf8Bytes(msg)),
-            address
-          ])
-          console.log('XMTP: signature =', sig)
-          return ethers.getBytes(sig)
+          try {
+            const msgBytes = typeof msg === 'string'
+              ? ethers.toUtf8Bytes(msg)
+              : msg
+            const hexMsg = ethers.hexlify(msgBytes)
+            const sig = await walletProvider.request({
+              method: 'personal_sign',
+              params: [hexMsg, address]
+            })
+            const sigBytes = ethers.getBytes(sig)
+            return sigBytes
+          } catch(e) {
+            console.error('XMTP signMessage error:', e)
+            throw e
+          }
         }
       }
       console.log('XMTP: appel Client.create...')
@@ -638,7 +646,11 @@ function App() {
     if (!account || !estAbonne) return
     const salon = forums.find(f => f.id === forumId)
     if (!salon) return
-    if (!window.confirm(`Supprimer le salon "${salon.name}" et tous ses topics ?`)) return
+    if (salon.creator && salon.creator !== account) {
+      alert('Vous ne pouvez supprimer que vos propres salons.')
+      return
+    }
+    if (!window.confirm(`Supprimer le salon "${salon.name}" ?`)) return
     setForums(forums.filter(f => f.id !== forumId))
     if (activeForum?.id === forumId) goHome()
   }

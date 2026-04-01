@@ -4,8 +4,19 @@ import './index.css';
 import App from './App';
 import { createAppKit } from '@reown/appkit/react';
 import { EthersAdapter } from '@reown/appkit-adapter-ethers';
-import { mainnet } from '@reown/appkit/networks';
+import { defineChain } from '@reown/appkit/networks';
 
+const mainnet = defineChain({
+  id: 1,
+  name: 'Ethereum',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://cloudflare-eth.com', 'https://rpc.ankr.com/eth'] }
+  },
+  blockExplorers: {
+    default: { name: 'Etherscan', url: 'https://etherscan.io' }
+  }
+});
 const ethersAdapter = new EthersAdapter();
 
 createAppKit({
