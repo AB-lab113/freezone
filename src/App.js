@@ -462,20 +462,22 @@ function App() {
     setXmtpError(null)
     try {
       console.log('XMTP: init avec address =', address, 'walletProvider =', walletProvider)
-      const ethersProvider = new ethers.BrowserProvider(walletProvider)
-      const ethersSigner = await ethersProvider.getSigner()
-
       const xmtpSigner = {
         getIdentifier: () => ({
           identifier: address.toLowerCase(),
           identifierKind: 0
         }),
         signMessage: async (msg) => {
-          const message = typeof msg === 'string'
-            ? msg
-            : new TextDecoder().decode(msg)
-          const signature = await ethersSigner.signMessage(message)
-          return ethers.getBytes(signature)
+          const message = msg instanceof Uint8Array
+            ? new TextDecoder().decode(msg)
+            : String(msg)
+          const ethersProvider = new ethers.BrowserProvider(walletProvider)
+          const signer = await ethersProvider.getSigner()
+          const signature = await signer.signMessage(message)
+          return {
+            bytes: ethers.getBytes(signature),
+            type: 'recoverable'
+          }
         }
       }
       console.log('XMTP: appel Client.create...')
@@ -1151,7 +1153,7 @@ function App() {
                       <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
                       {f.topics.some(t => t.pinned) && <span>📌</span>}
                     </div>
-                    {account && f.creator === account && (
+                    {account && estAbonne && (!f.creator || f.creator === account) && (
                       <button onClick={e => { e.stopPropagation(); supprimerSalon(f.id) }}
                         style={{ marginTop: 8, fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #ef444444', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
                         🗑️ Supprimer
