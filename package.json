@@ -12,7 +12,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
     "@web3modal/ethers": "^5.1.11",
-    "@xmtp/browser-sdk": "^6.5.0",
+    "@xmtp/browser-sdk": "^5.0.1",
     "ethers": "^6.16.0",
     "lucide-react": "^0.574.0",
     "react": "^19.2.4",
