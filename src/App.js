@@ -462,24 +462,20 @@ function App() {
     setXmtpError(null)
     try {
       console.log('XMTP: init avec address =', address, 'walletProvider =', walletProvider)
+      const ethersProvider = new ethers.BrowserProvider(walletProvider)
+      const ethersSigner = await ethersProvider.getSigner()
+
       const xmtpSigner = {
-        getIdentifier: () => ({ identifier: address, identifierKind: 0 }),
+        getIdentifier: () => ({
+          identifier: address.toLowerCase(),
+          identifierKind: 0
+        }),
         signMessage: async (msg) => {
-          try {
-            const msgBytes = typeof msg === 'string'
-              ? ethers.toUtf8Bytes(msg)
-              : msg
-            const hexMsg = ethers.hexlify(msgBytes)
-            const sig = await walletProvider.request({
-              method: 'personal_sign',
-              params: [hexMsg, address]
-            })
-            const sigBytes = ethers.getBytes(sig)
-            return sigBytes
-          } catch(e) {
-            console.error('XMTP signMessage error:', e)
-            throw e
-          }
+          const message = typeof msg === 'string'
+            ? msg
+            : new TextDecoder().decode(msg)
+          const signature = await ethersSigner.signMessage(message)
+          return ethers.getBytes(signature)
         }
       }
       console.log('XMTP: appel Client.create...')
@@ -547,7 +543,7 @@ function App() {
 
   const verifierAbonnement = async (addr, prov) => {
     try {
-      const provider = prov || new ethers.BrowserProvider(window.ethereum)
+      const provider = prov || new ethers.BrowserProvider(walletProvider || window.ethereum)
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
       const abonne = await contract.estAbonne(addr)
       setEstAbonne(abonne)
@@ -562,10 +558,10 @@ function App() {
   const estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
 
   const sAbonner = async () => {
-    if (!account) { alert('Connectez MetaMask !'); return }
+    if (!account) { alert('Connectez votre wallet !'); return }
     try {
       setLoadingAbo(true)
-      const provider = new ethers.BrowserProvider(window.ethereum)
+      const provider = new ethers.BrowserProvider(walletProvider || window.ethereum)
       const signer = await provider.getSigner()
       const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer)
       const prixWei = estGratuit ? 0n : await contract.getPrixEnWei()
