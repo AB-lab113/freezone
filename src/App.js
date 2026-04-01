@@ -470,28 +470,20 @@ function App() {
           identifierKind: 0
         }),
         signMessage: async (msg) => {
-          console.log('XMTP: signMessage appelé, type msg:', typeof msg, msg instanceof Uint8Array ? 'Uint8Array' : 'autre')
-          try {
-            let messageText
-            if (msg instanceof Uint8Array) {
-              messageText = new TextDecoder().decode(msg)
-            } else if (typeof msg === 'string') {
-              messageText = msg
-            } else {
-              messageText = JSON.stringify(msg)
-            }
-            console.log('XMTP: message à signer:', messageText.substring(0, 100))
+          const message = typeof msg === 'string' ? msg : new TextDecoder().decode(msg)
+          console.log('XMTP: signing:', message.substring(0, 50))
 
-            const ethersProvider = new ethers.BrowserProvider(walletProvider)
-            const signer = await ethersProvider.getSigner()
-            const signature = await signer.signMessage(messageText)
-            console.log('XMTP: signature obtenue:', signature.substring(0, 20))
+          const provider = window.ethereum || walletProvider
+          const sig = await provider.request({
+            method: 'personal_sign',
+            params: [message, address.toLowerCase()]
+          })
+          console.log('XMTP: sig obtained:', sig.substring(0, 20))
 
-            return ethers.getBytes(signature)
-          } catch (signErr) {
-            console.error('XMTP: signMessage erreur:', signErr)
-            throw signErr
-          }
+          const sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
+          const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)))
+          console.log('XMTP: sigBytes length:', sigBytes.length)
+          return sigBytes
         }
       }
 
