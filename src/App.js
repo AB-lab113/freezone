@@ -1,7 +1,8 @@
 import './App.css'
 import { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
-import { Client } from '@xmtp/browser-sdk'
+import nacl from 'tweetnacl'
+import naclUtil from 'tweetnacl-util'
 import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
@@ -108,8 +109,7 @@ function App() {
     try { await disconnect() } catch(e) {}
     setAccount(null)
     setEstAbonne(false)
-    setXmtpClient(null)
-    setXmtpError(null)
+    setNaclKeyPair(null)
   }
 
   // ─── THEME ───
@@ -170,13 +170,9 @@ function App() {
   const [showNewConversation, setShowNewConversation] = useState(false)
   const imageInputRef = useRef(null)
 
-  // ─── XMTP V3 ───
-  const [xmtpClient, setXmtpClient] = useState(null)
-  const [xmtpLoading, setXmtpLoading] = useState(false)
-  const [xmtpError, setXmtpError] = useState(null)
-  const [xmtpConversations, setXmtpConversations] = useState([])
-  const [xmtpActiveConv, setXmtpActiveConv] = useState(null)
-  const [xmtpMessages, setXmtpMessages] = useState([])
+  // ─── NACL E2E ───
+  const [naclKeyPair, setNaclKeyPair] = useState(null)
+  const [naclLoading, setNaclLoading] = useState(false)
 
   // ─── IPFS / 4EVERLAND ───
   const [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
@@ -216,13 +212,19 @@ function App() {
   }, [isConnected, address])
 
   useEffect(() => {
-    console.log('[XMTP DEBUG] useEffect check: account=', account, 'hasProvider=', !!(walletProvider || window.ethereum), 'xmtpClient=', !!xmtpClient, 'xmtpLoading=', xmtpLoading, 'xmtpError=', xmtpError)
-    const hasProvider = walletProvider || window.ethereum
-    if (account && hasProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
-      const timer = setTimeout(() => initXMTP(), 2500)
-      return () => clearTimeout(timer)
+    if (account && !naclKeyPair && !naclLoading) {
+      const stored = localStorage.getItem(`zonefree-nacl-${account.toLowerCase()}`)
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          setNaclKeyPair({
+            publicKey: naclUtil.decodeBase64(parsed.pub),
+            secretKey: naclUtil.decodeBase64(parsed.sec)
+          })
+        } catch (e) { console.warn('NaCl: clé locale corrompue') }
+      }
     }
-  }, [account, walletProvider])
+  }, [account])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
@@ -417,7 +419,8 @@ function App() {
       id: Date.now(),
       from: shortAddr(account),
       to: activeConversation.participants.find(p => p !== shortAddr(account)),
-      content: newMessage, type: 'text',
+      content: naclKeyPair ? naclEncrypt(newMessage) : newMessage, type: 'text',
+      encrypted: !!naclKeyPair,
       date: new Date().toLocaleDateString('fr-FR'),
       timestamp: Date.now(), read: false
     }
@@ -464,95 +467,60 @@ function App() {
     ? messages.reduce((t, c) => t + c.msgs.filter(m => m.to === shortAddr(account) && !m.read).length, 0)
     : 0
 
-   // ═══════════════════ XMTP V3 ═══════════════════
-  const initXMTP = async () => {
+   // ═══════════════════ NACL E2E ═══════════════════
+  const initNaclKeys = async () => {
     if (!account) { alert('Connectez votre wallet d\'abord !'); return }
-    const effectiveProvider = walletProvider || window.ethereum
-    if (!effectiveProvider) { alert('Provider wallet introuvable. Reconnectez votre wallet.'); return }
-    setXmtpLoading(true)
-    setXmtpError(null)
-    console.log('[XMTP DEBUG] 1. initXMTP démarré, account=', account, 'address=', address)
-    console.log('[XMTP DEBUG] 2. effectiveProvider=', effectiveProvider ? 'OK' : 'NULL')
+    const provider = walletProvider || window.ethereum
+    if (!provider) { alert('Provider wallet introuvable.'); return }
+    setNaclLoading(true)
     try {
-      const signerAddress = (address || account).toLowerCase()
-      console.log('[XMTP DEBUG] 3. signerAddress=', signerAddress)
-
-      const xmtpSigner = {
-        getIdentifier: () => ({
-          identifier: signerAddress,
-          identifierKind: 0
-        }),
-        signMessage: async (msg) => {
-          const message = typeof msg === 'string' ? msg : new TextDecoder().decode(msg)
-          console.log('[XMTP DEBUG] signMessage appelé, msg length:', message.length)
-
-          const sig = await effectiveProvider.request({
-            method: 'personal_sign',
-            params: [message, signerAddress]
-          })
-          console.log('XMTP: sig obtained:', sig.substring(0, 20))
-
-          const sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
-          const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)))
-          console.log('XMTP: sigBytes length:', sigBytes.length)
-          return sigBytes
-        }
-      }
-
-      console.log('[XMTP DEBUG] 4. Appel Client.create...')
-      const client = await Client.create(xmtpSigner, {
-        env: 'production',
-        dbEncryptionKey: new Uint8Array(32)
+      const sig = await provider.request({
+        method: 'personal_sign',
+        params: ['ZoneFree messaging key', (address || account).toLowerCase()]
       })
-      console.log('[XMTP DEBUG] 5. Client créé !', client)
-      setXmtpClient(client)
-      await client.conversations.sync()
-      const convList = await client.conversations.list()
-      setXmtpConversations(convList)
-      envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E activée !')
+      const sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
+      const seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
+      const kp = nacl.box.keyPair.fromSecretKey(seed)
+      setNaclKeyPair(kp)
+      localStorage.setItem(`zonefree-nacl-${account.toLowerCase()}`, JSON.stringify({
+        pub: naclUtil.encodeBase64(kp.publicKey),
+        sec: naclUtil.encodeBase64(kp.secretKey)
+      }))
+      envoyerNotif('🔐 NaCl E2E actif', 'Chiffrement Curve25519 activé !')
     } catch (e) {
-      console.error('[XMTP DEBUG] ERREUR:', e)
-      console.error('[XMTP DEBUG] ERREUR message:', e?.message)
-      console.error('[XMTP DEBUG] ERREUR stack:', e?.stack)
-      const msg = e?.message || String(e) || 'Erreur inconnue'
-      setXmtpError(msg)
-      alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
+      console.error('NaCl init error:', e)
+      alert('Signature refusée. Le chiffrement E2E ne sera pas activé.')
     } finally {
-      setXmtpLoading(false)
+      setNaclLoading(false)
     }
   }
 
-  const demarrerConversationXMTP = async () => {
-    if (!xmtpClient || !newMessageTo.trim()) return
+  const naclEncrypt = (text) => {
+    if (!naclKeyPair) return text
+    const nonce = nacl.randomBytes(24)
+    const msgBytes = naclUtil.decodeUTF8(text)
+    const encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
+    return JSON.stringify({
+      e: naclUtil.encodeBase64(encrypted),
+      n: naclUtil.encodeBase64(nonce)
+    })
+  }
+
+  const naclDecrypt = (data) => {
+    if (!naclKeyPair) return data
     try {
-      const dm = await xmtpClient.conversations.findOrCreateDm({
-        identifier: newMessageTo.trim().toLowerCase(),
-        identifierKind: 'Ethereum'
-      })
-      setXmtpActiveConv(dm)
-      await dm.sync()
-      setXmtpMessages(await dm.messages())
-      setShowNewConversation(false); setNewMessageTo(''); setPage('xmtp-conversation')
+      const parsed = JSON.parse(data)
+      if (!parsed.e || !parsed.n) return data
+      const decrypted = nacl.secretbox.open(
+        naclUtil.decodeBase64(parsed.e),
+        naclUtil.decodeBase64(parsed.n),
+        naclKeyPair.secretKey
+      )
+      if (!decrypted) return '[Message non dechiffrable]'
+      return naclUtil.encodeUTF8(decrypted)
     } catch (e) {
-      alert('Adresse invalide ou non enregistrée sur XMTP.\n' + e.message)
+      return data
     }
-  }
-
-  const envoyerMessageXMTP = async () => {
-    if (!xmtpActiveConv || !newMessage.trim()) return
-    try {
-      await xmtpActiveConv.sendText(newMessage.trim())
-      setNewMessage('')
-      await xmtpActiveConv.sync()
-      setXmtpMessages(await xmtpActiveConv.messages())
-    } catch (e) { alert('Erreur envoi XMTP: ' + e.message) }
-  }
-
-  const ouvrirConversationXMTP = async (conv) => {
-    setXmtpActiveConv(conv)
-    await conv.sync()
-    setXmtpMessages(await conv.messages())
-    setPage('xmtp-conversation')
   }
 
   // ═══════════════════ BLOCKCHAIN ═══════════════════
@@ -746,7 +714,7 @@ function App() {
       </header>
 
       {/* ══════════════ BANNIÈRE 300 GRATUITS ══════════════ */}
-      {account && !estAbonne && estGratuit && !['profil', 'messages', 'conversation', 'xmtp-conversation'].includes(page) && (
+      {account && !estAbonne && estGratuit && !['profil', 'messages', 'conversation'].includes(page) && (
         <div style={{ background: 'linear-gradient(90deg,#22c55e22,#6366f122)', border: '1.5px solid #22c55e', borderRadius: 12, margin: '16px auto', maxWidth: 860, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14 }}>
             🎁 <strong>Early Adopter !</strong> {maxGratuit - totalAbonnes} places gratuites restantes ({totalAbonnes}/{maxGratuit})
@@ -758,7 +726,7 @@ function App() {
       )}
 
       {/* ══════════════ BANNIÈRE ABONNEMENT PAYANT ══════════════ */}
-      {account && !estAbonne && !estGratuit && !['profil', 'messages', 'conversation', 'xmtp-conversation'].includes(page) && (
+      {account && !estAbonne && !estGratuit && !['profil', 'messages', 'conversation'].includes(page) && (
         <div style={{ background: 'linear-gradient(90deg,#f59e0b22,#6366f122)', border: '1.5px solid #f59e0b', borderRadius: 12, margin: '16px auto', maxWidth: 860, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14 }}><strong>Vous n'êtes pas abonné.</strong> Rejoignez ZoneFree pour ~2€/mois en ETH.</p>
           <button className="btn btn-primary" onClick={sAbonner} disabled={loadingAbo} style={{ fontSize: 13, padding: '8px 20px' }}>
@@ -772,81 +740,59 @@ function App() {
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <h2 style={{ fontSize: 22 }}>✉️ Messagerie {xmtpClient ? '🔐 XMTP E2E' : 'locale'}</h2>
+            <h2 style={{ fontSize: 22 }}>✉️ Messagerie {naclKeyPair ? '🔐 NaCl E2E' : 'locale'}</h2>
             <div style={{ display: 'flex', gap: 8 }}>
-              {!xmtpClient && (
-                <button className="btn btn-ghost" onClick={initXMTP} disabled={xmtpLoading} style={{ fontSize: 12 }}>
-                  {xmtpLoading ? <span className="spinner">Connexion...</span> : '🔐 Activer XMTP'}
+              {!naclKeyPair && (
+                <button className="btn btn-ghost" onClick={initNaclKeys} disabled={naclLoading} style={{ fontSize: 12 }}>
+                  {naclLoading ? <span className="spinner">Signature...</span> : '🔐 Activer E2E'}
                 </button>
               )}
               <button className="btn btn-primary" onClick={() => setShowNewConversation(true)}>+ Nouveau</button>
             </div>
           </div>
 
-          {xmtpError && (
-            <div style={{ background: '#ef444411', border: '1.5px solid #ef444444', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#ef4444' }}>
-              ⚠️ XMTP : {xmtpError}
-            </div>
-          )}
-
-          <div style={{ background: xmtpClient ? '#22c55e11' : '#6366f111', border: `1.5px solid ${xmtpClient ? '#22c55e44' : '#6366f133'}`, borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13 }}>
-            {xmtpClient
-              ? '🔐 Chiffrement MLS E2E actif via XMTP V3 — Messages sur réseau décentralisé'
-              : '💾 Messages stockés localement — Cliquez "Activer XMTP" pour E2E réel'}
+          <div style={{ background: naclKeyPair ? '#22c55e11' : '#6366f111', border: `1.5px solid ${naclKeyPair ? '#22c55e44' : '#6366f133'}`, borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13 }}>
+            {naclKeyPair
+              ? '🔐 Chiffrement NaCl actif — Curve25519 + XSalsa20 + Poly1305'
+              : '💾 Messages en clair — Cliquez "Activer E2E" pour chiffrer'}
           </div>
 
-          {xmtpClient && xmtpConversations.length > 0 && (
-            <div className="messages-list">
-              {xmtpConversations.map((conv, i) => (
-                <div key={i} className="conversation-item" onClick={() => ouvrirConversationXMTP(conv)}>
-                  <div className="conv-avatar">🔐</div>
-                  <div className="conv-info">
-                    <div className="conv-addr" style={{ fontFamily: 'monospace', fontSize: 13 }}>{conv.peerInboxId?.slice(0, 16)}...</div>
-                    <div className="conv-preview">Message chiffré E2E</div>
-                  </div>
-                  <div style={{ fontSize: 10, opacity: 0.5 }}>XMTP</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!xmtpClient && (
-            messages.length === 0
-              ? <div className="no-results" style={{ textAlign: 'center', padding: 40 }}>
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
-                  <p style={{ opacity: 0.5 }}>Aucun message. Démarrez une conversation !</p>
-                </div>
-              : <div className="messages-list">
-                  {messages.map(conv => {
-                    const other = conv.participants.find(p => p !== shortAddr(account)) || conv.participants[0]
-                    const lastMsg = conv.msgs[conv.msgs.length - 1]
-                    const unread = conv.msgs.filter(m => m.to === shortAddr(account) && !m.read).length
-                    return (
-                      <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
-                        <div className="conv-avatar">💬</div>
-                        <div className="conv-info">
-                          <div className="conv-addr">{other}</div>
-                          <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : lastMsg.content) : 'Démarrer la conversation...'}</div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                          {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
-                          {unread > 0 && <div className="unread-badge">{unread}</div>}
-                        </div>
+          {messages.length === 0
+            ? <div className="no-results" style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
+                <p style={{ opacity: 0.5 }}>Aucun message. Démarrez une conversation !</p>
+              </div>
+            : <div className="messages-list">
+                {messages.map(conv => {
+                  const other = conv.participants.find(p => p !== shortAddr(account)) || conv.participants[0]
+                  const lastMsg = conv.msgs[conv.msgs.length - 1]
+                  const unread = conv.msgs.filter(m => m.to === shortAddr(account) && !m.read).length
+                  return (
+                    <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
+                      <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
+                      <div className="conv-info">
+                        <div className="conv-addr">{other}</div>
+                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (lastMsg.encrypted ? naclDecrypt(lastMsg.content) : lastMsg.content)) : 'Démarrer la conversation...'}</div>
                       </div>
-                    )
-                  })}
-                </div>
-          )}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
+                        {unread > 0 && <div className="unread-badge">{unread}</div>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+          }
 
           {showNewConversation && (
             <div style={{ position: 'fixed', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
               <div style={{ background: dark ? '#161b22' : 'white', borderRadius: 16, padding: 32, width: 440, border: '1.5px solid #6366f1' }}>
                 <h2 style={{ marginBottom: 8, color: '#6366f1' }}>✉️ Nouveau message</h2>
-                {xmtpClient && <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>XMTP : entrez l'adresse <strong>complète</strong> 0x... du destinataire</p>}
+                {naclKeyPair && <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>Chiffrement NaCl actif — entrez l'adresse du destinataire</p>}
                 <label style={{ fontSize: 13, opacity: 0.7 }}>Adresse du destinataire</label>
                 <input value={newMessageTo} onChange={e => setNewMessageTo(e.target.value)} style={inputStyle} placeholder="0x... ou 0xABCD...1234" />
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button className="btn btn-primary" onClick={xmtpClient ? demarrerConversationXMTP : demarrerConversation} style={{ flex: 1 }}>Démarrer</button>
+                  <button className="btn btn-primary" onClick={demarrerConversation} style={{ flex: 1 }}>Démarrer</button>
                   <button className="btn btn-ghost" onClick={() => setShowNewConversation(false)} style={{ flex: 1 }}>Annuler</button>
                 </div>
               </div>
@@ -862,7 +808,7 @@ function App() {
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
             <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>💬</div>
             <div style={{ fontWeight: 700 }}>{activeConversation.participants.find(p => p !== shortAddr(account))}</div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.5 }}>🔒 Local</div>
+            <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.5 }}>{naclKeyPair ? '🔐 NaCl' : '🔒 Local'}</div>
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
             {activeConversation.msgs.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
@@ -872,7 +818,7 @@ function App() {
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
                     ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{m.content}</div>
+                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{m.encrypted ? naclDecrypt(m.content) : m.content}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
@@ -898,46 +844,6 @@ function App() {
                   <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={envoyerImage} />
                   <button className="btn btn-ghost" onClick={() => imageInputRef.current?.click()} style={{ fontSize: 18, padding: '8px 10px' }}>📷</button>
                   <button className="send-btn" onClick={envoyerMessage} disabled={!newMessage.trim()}>➤</button>
-                </>
-            }
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════ PAGE CONVERSATION XMTP ══════════════ */}
-      {page === 'xmtp-conversation' && xmtpActiveConv && (
-        <div className="forum-page" style={{ padding: 0 }}>
-          <div style={{ padding: '16px 24px', borderBottom: '1.5px solid #30363d', display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
-            <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>🔐</div>
-            <div style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 13 }}>{xmtpActiveConv.peerInboxId?.slice(0, 20)}...</div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, background: '#22c55e22', color: '#22c55e', border: '1px solid #22c55e44', borderRadius: 20, padding: '3px 10px' }}>🔐 E2E Chiffré</div>
-          </div>
-          <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
-            {xmtpMessages.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
-            {xmtpMessages.map((msg, i) => {
-              const isSent = msg.senderInboxId === xmtpClient?.inboxId
-              return (
-                <div key={i} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
-                  <div className={`bubble ${isSent ? 'sent' : 'received'}`}>
-                    {typeof msg.content === 'string' ? msg.content : '📎 Contenu non supporté'}
-                  </div>
-                  <div className="bubble-time">
-                    {msg.sentAtNs ? new Date(Number(msg.sentAtNs) / 1000000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          <div className="message-input-bar">
-            {!estAbonne
-              ? <p style={{ color: '#f59e0b', fontSize: 14, margin: 0 }}>Abonnement requis pour envoyer</p>
-              : <>
-                  <textarea className="message-input" rows={1} value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerMessageXMTP() } }}
-                    placeholder="Message chiffré E2E... (Entrée pour envoyer)" />
-                  <button className="send-btn" onClick={envoyerMessageXMTP} disabled={!newMessage.trim()}>➤</button>
                 </>
             }
           </div>
@@ -1096,19 +1002,19 @@ function App() {
                 {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT 4EVERLAND</div>}
               </div>
 
-              {/* 🔐 XMTP */}
+              {/* 🔐 NaCl E2E */}
               <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>🔐 XMTP V3 E2E</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>🔐 Chiffrement NaCl</div>
                     <div style={{ fontSize: 12, opacity: 0.6 }}>
-                      {xmtpClient ? 'Messagerie chiffrée MLS active' : xmtpError ? `Erreur : ${xmtpError.slice(0, 40)}...` : 'Messagerie chiffrée de bout en bout'}
+                      {naclKeyPair ? 'Curve25519 + XSalsa20 + Poly1305 actif' : 'Chiffrement de bout en bout des messages'}
                     </div>
                   </div>
-                  {xmtpClient
+                  {naclKeyPair
                     ? <span style={{ fontSize: 13, color: '#22c55e', fontWeight: 700, background: '#22c55e22', border: '1px solid #22c55e44', borderRadius: 20, padding: '6px 14px' }}>✅ Actif</span>
-                    : <button className="btn btn-primary" onClick={initXMTP} disabled={xmtpLoading} style={{ fontSize: 13, padding: '8px 18px' }}>
-                        {xmtpLoading ? <span className="spinner">Connexion...</span> : 'Activer'}
+                    : <button className="btn btn-primary" onClick={initNaclKeys} disabled={naclLoading} style={{ fontSize: 13, padding: '8px 18px' }}>
+                        {naclLoading ? <span className="spinner">Signature...</span> : 'Activer'}
                       </button>
                   }
                 </div>
