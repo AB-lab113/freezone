@@ -216,6 +216,7 @@ function App() {
   }, [isConnected, address])
 
   useEffect(() => {
+    console.log('[XMTP DEBUG] useEffect check: account=', account, 'hasProvider=', !!(walletProvider || window.ethereum), 'xmtpClient=', !!xmtpClient, 'xmtpLoading=', xmtpLoading, 'xmtpError=', xmtpError)
     const hasProvider = walletProvider || window.ethereum
     if (account && hasProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
       const timer = setTimeout(() => initXMTP(), 2500)
@@ -470,21 +471,24 @@ function App() {
     if (!effectiveProvider) { alert('Provider wallet introuvable. Reconnectez votre wallet.'); return }
     setXmtpLoading(true)
     setXmtpError(null)
+    console.log('[XMTP DEBUG] 1. initXMTP démarré, account=', account, 'address=', address)
+    console.log('[XMTP DEBUG] 2. effectiveProvider=', effectiveProvider ? 'OK' : 'NULL')
     try {
-      console.log('XMTP: init avec address =', address || account, 'provider =', effectiveProvider === walletProvider ? 'AppKit' : 'MetaMask direct')
+      const signerAddress = (address || account).toLowerCase()
+      console.log('[XMTP DEBUG] 3. signerAddress=', signerAddress)
 
       const xmtpSigner = {
         getIdentifier: () => ({
-          identifier: (address || account).toLowerCase(),
+          identifier: signerAddress,
           identifierKind: 0
         }),
         signMessage: async (msg) => {
           const message = typeof msg === 'string' ? msg : new TextDecoder().decode(msg)
-          console.log('XMTP: signing:', message.substring(0, 50))
+          console.log('[XMTP DEBUG] signMessage appelé, msg length:', message.length)
 
           const sig = await effectiveProvider.request({
             method: 'personal_sign',
-            params: [message, (address || account).toLowerCase()]
+            params: [message, signerAddress]
           })
           console.log('XMTP: sig obtained:', sig.substring(0, 20))
 
@@ -495,19 +499,21 @@ function App() {
         }
       }
 
-      console.log('XMTP: appel Client.create...')
+      console.log('[XMTP DEBUG] 4. Appel Client.create...')
       const client = await Client.create(xmtpSigner, {
         env: 'production',
         dbEncryptionKey: new Uint8Array(32)
       })
-      console.log('XMTP: client créé ✅', client)
+      console.log('[XMTP DEBUG] 5. Client créé !', client)
       setXmtpClient(client)
       await client.conversations.sync()
       const convList = await client.conversations.list()
       setXmtpConversations(convList)
       envoyerNotif('🔐 XMTP V3 actif', 'Messagerie E2E activée !')
     } catch (e) {
-      console.error('XMTP erreur complète:', e)
+      console.error('[XMTP DEBUG] ERREUR:', e)
+      console.error('[XMTP DEBUG] ERREUR message:', e?.message)
+      console.error('[XMTP DEBUG] ERREUR stack:', e?.stack)
       const msg = e?.message || String(e) || 'Erreur inconnue'
       setXmtpError(msg)
       alert(`XMTP non disponible.\n${msg}\n\nLa messagerie locale reste active.`)
