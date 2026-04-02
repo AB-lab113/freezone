@@ -78,14 +78,22 @@ const getPseudoFromStorage = () => {
   try {
     const parsed = JSON.parse(stored)
     if (typeof parsed === 'object' && parsed !== null) {
-      // Ancien format {"0xADDR": "monPseudo"} → extrait la valeur
       const valeur = String(Object.values(parsed)[0] || '')
-      // Sauvegarde en nouveau format propre
       localStorage.setItem('zonefree-pseudo', valeur)
       return valeur
     }
     return stored
   } catch (e) {
+    const match = stored.match(/"([^"]+)"[:\s]*"?([^"{}]+)"?/)
+    if (match && match[2]) {
+      const valeur = match[2].trim()
+      localStorage.setItem('zonefree-pseudo', valeur)
+      return valeur
+    }
+    if (stored.startsWith('{') || stored.startsWith('[')) {
+      localStorage.setItem('zonefree-pseudo', '')
+      return ''
+    }
     return stored
   }
 }
@@ -208,7 +216,8 @@ function App() {
   }, [isConnected, address])
 
   useEffect(() => {
-    if (account && walletProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
+    const hasProvider = walletProvider || window.ethereum
+    if (account && hasProvider && !xmtpClient && !xmtpLoading && !xmtpError) {
       const timer = setTimeout(() => initXMTP(), 2500)
       return () => clearTimeout(timer)
     }
@@ -457,26 +466,25 @@ function App() {
    // ═══════════════════ XMTP V3 ═══════════════════
   const initXMTP = async () => {
     if (!account) { alert('Connectez votre wallet d\'abord !'); return }
-    if (!walletProvider) { alert('Provider wallet introuvable. Reconnectez votre wallet.'); return }
+    const effectiveProvider = walletProvider || window.ethereum
+    if (!effectiveProvider) { alert('Provider wallet introuvable. Reconnectez votre wallet.'); return }
     setXmtpLoading(true)
     setXmtpError(null)
     try {
-      console.log('XMTP: init avec address =', address, 'walletProvider =', walletProvider)
-      if (!walletProvider) throw new Error('walletProvider manquant')
+      console.log('XMTP: init avec address =', address || account, 'provider =', effectiveProvider === walletProvider ? 'AppKit' : 'MetaMask direct')
 
       const xmtpSigner = {
         getIdentifier: () => ({
-          identifier: address.toLowerCase(),
+          identifier: (address || account).toLowerCase(),
           identifierKind: 0
         }),
         signMessage: async (msg) => {
           const message = typeof msg === 'string' ? msg : new TextDecoder().decode(msg)
           console.log('XMTP: signing:', message.substring(0, 50))
 
-          const provider = window.ethereum || walletProvider
-          const sig = await provider.request({
+          const sig = await effectiveProvider.request({
             method: 'personal_sign',
-            params: [message, address.toLowerCase()]
+            params: [message, (address || account).toLowerCase()]
           })
           console.log('XMTP: sig obtained:', sig.substring(0, 20))
 
