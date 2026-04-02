@@ -1,5 +1,5 @@
 import './App.css'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
 import nacl from 'tweetnacl'
 import naclUtil from 'tweetnacl-util'
@@ -98,6 +98,21 @@ const getPseudoFromStorage = () => {
     return stored
   }
 }
+
+class MessagerieErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null } }
+  static getDerivedStateFromError(error) { return { hasError: true, error: error.message } }
+  render() {
+    if (this.state.hasError) return (
+      <div style={{ padding: 20, color: '#ef4444', textAlign: 'center' }}>
+        Erreur messagerie: {this.state.error}
+        <br /><button onClick={() => this.setState({ hasError: false })} style={{ marginTop: 12, padding: '8px 16px', cursor: 'pointer' }}>Réessayer</button>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
 function App() {
   // ─── REOWN APPKIT HOOKS ───
   const { open: openModal } = useAppKit()
@@ -415,12 +430,14 @@ function App() {
 
   const envoyerMessage = () => {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
+    const rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
+    const content = (typeof rawContent === 'string') ? rawContent : String(rawContent || newMessage)
     const msg = {
       id: Date.now(),
       from: shortAddr(account),
       to: activeConversation.participants.find(p => p !== shortAddr(account)),
-      content: naclKeyPair ? naclEncrypt(newMessage) : newMessage, type: 'text',
-      encrypted: !!naclKeyPair,
+      content, type: 'text',
+      encrypted: !!naclKeyPair && content !== newMessage,
       date: new Date().toLocaleDateString('fr-FR'),
       timestamp: Date.now(), read: false
     }
@@ -497,16 +514,23 @@ function App() {
 
   const naclEncrypt = (text) => {
     if (!naclKeyPair) return text
-    const nonce = nacl.randomBytes(24)
-    const msgBytes = naclUtil.decodeUTF8(text)
-    const encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
-    return JSON.stringify({
-      e: naclUtil.encodeBase64(encrypted),
-      n: naclUtil.encodeBase64(nonce)
-    })
+    try {
+      const nonce = nacl.randomBytes(24)
+      const msgBytes = naclUtil.decodeUTF8(text)
+      const encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
+      return JSON.stringify({
+        e: naclUtil.encodeBase64(encrypted),
+        n: naclUtil.encodeBase64(nonce)
+      })
+    } catch (err) {
+      console.error('naclEncrypt error:', err)
+      return text
+    }
   }
 
   const naclDecrypt = (data) => {
+    if (!data) return '...'
+    if (typeof data !== 'string') return String(data)
     if (!naclKeyPair) return data
     try {
       const parsed = JSON.parse(data)
@@ -516,7 +540,7 @@ function App() {
         naclUtil.decodeBase64(parsed.n),
         naclKeyPair.secretKey
       )
-      if (!decrypted) return '[Message non dechiffrable]'
+      if (!decrypted) return '[message chiffre]'
       return naclUtil.encodeUTF8(decrypted)
     } catch (e) {
       return data
@@ -737,6 +761,7 @@ function App() {
 
       {/* ══════════════ PAGE MESSAGES ══════════════ */}
       {page === 'messages' && account && (
+        <MessagerieErrorBoundary>
         <div className="forum-page">
           <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -772,7 +797,7 @@ function App() {
                       <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
                       <div className="conv-info">
                         <div className="conv-addr">{other}</div>
-                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (lastMsg.encrypted ? naclDecrypt(lastMsg.content) : lastMsg.content)) : 'Démarrer la conversation...'}</div>
+                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { return lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...') } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
@@ -799,10 +824,12 @@ function App() {
             </div>
           )}
         </div>
+        </MessagerieErrorBoundary>
       )}
 
       {/* ══════════════ PAGE CONVERSATION LOCALE ══════════════ */}
       {page === 'conversation' && activeConversation && account && (
+        <MessagerieErrorBoundary>
         <div className="forum-page" style={{ padding: 0 }}>
           <div style={{ padding: '16px 24px', borderBottom: '1.5px solid #30363d', display: 'flex', alignItems: 'center', gap: 16 }}>
             <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
@@ -818,7 +845,7 @@ function App() {
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
                     ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{m.encrypted ? naclDecrypt(m.content) : m.content}</div>
+                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { return m.encrypted ? naclDecrypt(m.content) : (m.content || '...') } catch(e) { return '[erreur affichage]' } })()}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
@@ -848,6 +875,7 @@ function App() {
             }
           </div>
         </div>
+        </MessagerieErrorBoundary>
       )}
 
       {/* ══════════════ PAGE PROFIL ══════════════ */}
