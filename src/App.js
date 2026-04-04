@@ -6,6 +6,32 @@ import naclUtil from 'tweetnacl-util'
 import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
+// Panneau d'erreur visible à l'écran
+window.__lastError = null
+window.onerror = function(msg, src, line, col, err) {
+  window.__lastError = { msg: msg, line: line, stack: err ? err.stack : '' }
+  var panel = document.getElementById('__error_panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.id = '__error_panel'
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:12px;z-index:99999;font-size:12px;word-break:break-all;white-space:pre-wrap;max-height:200px;overflow:auto;'
+    document.body.appendChild(panel)
+  }
+  panel.textContent = 'CRASH: ' + msg + '\nLine: ' + line + '\n' + (err && err.stack ? err.stack.substring(0, 500) : '')
+}
+window.addEventListener('unhandledrejection', function(e) {
+  var reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : 'Promise rejetée null'
+  window.__lastError = { reason: reason }
+  var panel = document.getElementById('__error_panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.id = '__error_panel'
+    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:orange;color:black;padding:12px;z-index:99999;font-size:12px;word-break:break-all;white-space:pre-wrap;max-height:200px;overflow:auto;'
+    document.body.appendChild(panel)
+  }
+  panel.textContent = 'PROMISE CRASH:\n' + reason.substring(0, 800)
+})
+
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 const TOPICS_PAR_PAGE = 5
 const IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
