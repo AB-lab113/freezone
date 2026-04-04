@@ -450,6 +450,7 @@ function App() {
       })
       setActiveConversation(updated); setNewMessage('')
       envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
+      sauvegarderConvIPFS(activeConversation.key, updated.msgs)
     } catch (err) {
       console.error('envoyerMessage crash:', err)
       alert('Erreur envoi: ' + (err && err.message ? err.message : String(err)))
@@ -486,9 +487,19 @@ function App() {
     }
   }
 
-  const ouvrirConversation = (conv) => {
-    const updated = messages.map(c => c.key === conv.key
-      ? { ...c, msgs: c.msgs.map(m => m.to === shortAddr(account) ? { ...m, read: true } : m) }
+  const ouvrirConversation = async (conv) => {
+    var localMsgs = conv.msgs || []
+    try {
+      var ipfsMsgs = await chargerConvIPFS(conv.key)
+      if (ipfsMsgs && ipfsMsgs.length > 0) {
+        var localIds = new Set(localMsgs.map(function(m) { return m.id }))
+        var merged = [...localMsgs, ...ipfsMsgs.filter(function(m) { return !localIds.has(m.id) })]
+        merged.sort(function(a, b) { return (a.timestamp || a.id) - (b.timestamp || b.id) })
+        localMsgs = merged
+      }
+    } catch (e) { console.warn('IPFS merge skipped:', e) }
+    var updated = messages.map(c => c.key === conv.key
+      ? { ...c, msgs: localMsgs.map(m => m.to === shortAddr(account) ? { ...m, read: true } : m) }
       : c)
     setMessages(updated)
     setActiveConversation(updated.find(c => c.key === conv.key))
@@ -709,6 +720,44 @@ function App() {
     f.description.toLowerCase().includes(recherche.toLowerCase())
   )
 
+  // ═══════════════════ HELPERS RENDER ═══════════════════
+  const renderContenu = (msg) => {
+    if (!msg || !msg.content) return '...'
+    if (msg.encrypted) {
+      var d = naclDecrypt(msg.content)
+      return typeof d === 'string' ? d : String(d)
+    }
+    return typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+  }
+
+  // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
+  const sauvegarderConvIPFS = async (convKey, msgs) => {
+    if (!everlandJWT) return
+    try {
+      await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
+        body: JSON.stringify({
+          pinataContent: { convKey, msgs, updatedAt: Date.now() },
+          pinataMetadata: { name: `ZoneFree-conv-${convKey}-${Date.now()}` }
+        })
+      }).then(r => r.json()).then(res => {
+        if (res.IpfsHash) localStorage.setItem('zonefree-conv-cid-' + convKey, res.IpfsHash)
+      })
+    } catch (e) { console.error('IPFS conv save error:', e) }
+  }
+
+  const chargerConvIPFS = async (convKey) => {
+    try {
+      var cid = localStorage.getItem('zonefree-conv-cid-' + convKey)
+      if (!cid) return null
+      var res = await fetch(IPFS_GATEWAY + cid)
+      if (!res.ok) return null
+      var data = await res.json()
+      return data.msgs || null
+    } catch (e) { console.error('IPFS conv load error:', e); return null }
+  }
+
   // ═══════════════════ RENDER ═══════════════════
   return (
     <div>
@@ -813,7 +862,7 @@ function App() {
                       <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
                       <div className="conv-info">
                         <div className="conv-addr">{other}</div>
-                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { var c = lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
+                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : renderContenu(lastMsg)) : 'Démarrer la conversation...'}</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
@@ -861,7 +910,7 @@ function App() {
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
                     ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { var c = m.encrypted ? naclDecrypt(m.content) : (m.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '[erreur affichage]' } })()}</div>
+                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{renderContenu(m)}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
