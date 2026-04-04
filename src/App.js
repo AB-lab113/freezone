@@ -430,45 +430,60 @@ function App() {
 
   const envoyerMessage = () => {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
-    const rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
-    const content = (typeof rawContent === 'string') ? rawContent : String(rawContent || newMessage)
-    const msg = {
-      id: Date.now(),
-      from: shortAddr(account),
-      to: activeConversation.participants.find(p => p !== shortAddr(account)),
-      content, type: 'text',
-      encrypted: !!naclKeyPair && content !== newMessage,
-      date: new Date().toLocaleDateString('fr-FR'),
-      timestamp: Date.now(), read: false
-    }
-    const updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
-    setMessages(prev => {
-      const e = prev.find(c => c.key === activeConversation.key)
-      if (!e) return [...prev, updated]
-      return prev.map(c => c.key === activeConversation.key ? updated : c)
-    })
-    setActiveConversation(updated); setNewMessage('')
-    envoyerNotif('✉️ ZoneFree', `Message envoyé à ${msg.to}`)
-  }
-
-  const envoyerImage = (e) => {
-    const file = e.target.files[0]
-    if (!file || !account || !estAbonne || !activeConversation) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
+    try {
+      const rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
+      const content = (typeof rawContent === 'string') ? rawContent : String(rawContent || newMessage)
       const msg = {
         id: Date.now(),
         from: shortAddr(account),
         to: activeConversation.participants.find(p => p !== shortAddr(account)),
-        content: ev.target.result, type: 'image',
+        content, type: 'text',
+        encrypted: !!naclKeyPair && content !== newMessage,
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(), read: false
       }
       const updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
-      setMessages(prev => prev.map(c => c.key === activeConversation.key ? updated : c))
-      setActiveConversation(updated)
+      setMessages(prev => {
+        const e = prev.find(c => c.key === activeConversation.key)
+        if (!e) return [...prev, updated]
+        return prev.map(c => c.key === activeConversation.key ? updated : c)
+      })
+      setActiveConversation(updated); setNewMessage('')
+      envoyerNotif('✉️ ZoneFree', `Message envoyé à ${msg.to}`)
+    } catch (err) {
+      console.error('envoyerMessage crash:', err)
+      alert('Erreur envoi: ' + err.message)
     }
-    reader.readAsDataURL(file)
+  }
+
+  const envoyerImage = (e) => {
+    try {
+      const file = e.target.files[0]
+      if (!file || !account || !estAbonne || !activeConversation) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        try {
+          const msg = {
+            id: Date.now(),
+            from: shortAddr(account),
+            to: activeConversation.participants.find(p => p !== shortAddr(account)),
+            content: ev.target.result, type: 'image',
+            date: new Date().toLocaleDateString('fr-FR'),
+            timestamp: Date.now(), read: false
+          }
+          const updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
+          setMessages(prev => prev.map(c => c.key === activeConversation.key ? updated : c))
+          setActiveConversation(updated)
+        } catch (err) {
+          console.error('envoyerImage onload crash:', err)
+          alert('Erreur envoi image: ' + err.message)
+        }
+      }
+      reader.readAsDataURL(file)
+    } catch (err) {
+      console.error('envoyerImage crash:', err)
+      alert('Erreur envoi image: ' + err.message)
+    }
   }
 
   const ouvrirConversation = (conv) => {
