@@ -432,7 +432,7 @@ function App() {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
     try {
       const rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
-      const content = (typeof rawContent === 'string') ? rawContent : String(rawContent || newMessage)
+      const content = typeof rawContent === 'string' ? rawContent : (JSON.stringify(rawContent) || String(rawContent))
       const msg = {
         id: Date.now(),
         from: shortAddr(account),
@@ -528,18 +528,19 @@ function App() {
   }
 
   const naclEncrypt = (text) => {
-    if (!naclKeyPair) return text
+    if (!naclKeyPair) return String(text)
     try {
       const nonce = nacl.randomBytes(24)
-      const msgBytes = naclUtil.decodeUTF8(text)
+      const msgBytes = naclUtil.decodeUTF8(String(text))
       const encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
-      return JSON.stringify({
+      const result = JSON.stringify({
         e: naclUtil.encodeBase64(encrypted),
         n: naclUtil.encodeBase64(nonce)
       })
+      return typeof result === 'string' ? result : String(result)
     } catch (err) {
       console.error('naclEncrypt error:', err)
-      return text
+      return typeof text === 'string' ? text : String(text)
     }
   }
 
@@ -812,7 +813,7 @@ function App() {
                       <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
                       <div className="conv-info">
                         <div className="conv-addr">{other}</div>
-                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { return lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...') } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
+                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { const c = lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
@@ -860,7 +861,7 @@ function App() {
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
                     ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { return m.encrypted ? naclDecrypt(m.content) : (m.content || '...') } catch(e) { return '[erreur affichage]' } })()}</div>
+                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { const c = m.encrypted ? naclDecrypt(m.content) : (m.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '[erreur affichage]' } })()}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
