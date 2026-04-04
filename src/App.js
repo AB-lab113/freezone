@@ -6,32 +6,6 @@ import naclUtil from 'tweetnacl-util'
 import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
-// Panneau d'erreur visible à l'écran
-window.__lastError = null
-window.onerror = function(msg, src, line, col, err) {
-  window.__lastError = { msg: msg, line: line, stack: err ? err.stack : '' }
-  var panel = document.getElementById('__error_panel')
-  if (!panel) {
-    panel = document.createElement('div')
-    panel.id = '__error_panel'
-    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:12px;z-index:99999;font-size:12px;word-break:break-all;white-space:pre-wrap;max-height:200px;overflow:auto;'
-    document.body.appendChild(panel)
-  }
-  panel.textContent = 'CRASH: ' + msg + '\nLine: ' + line + '\n' + (err && err.stack ? err.stack.substring(0, 500) : '')
-}
-window.addEventListener('unhandledrejection', function(e) {
-  var reason = e.reason ? (e.reason.stack || e.reason.message || String(e.reason)) : 'Promise rejetée null'
-  window.__lastError = { reason: reason }
-  var panel = document.getElementById('__error_panel')
-  if (!panel) {
-    panel = document.createElement('div')
-    panel.id = '__error_panel'
-    panel.style.cssText = 'position:fixed;top:0;left:0;right:0;background:orange;color:black;padding:12px;z-index:99999;font-size:12px;word-break:break-all;white-space:pre-wrap;max-height:200px;overflow:auto;'
-    document.body.appendChild(panel)
-  }
-  panel.textContent = 'PROMISE CRASH:\n' + reason.substring(0, 800)
-})
-
 const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 const TOPICS_PAR_PAGE = 5
 const IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
@@ -457,28 +431,28 @@ function App() {
   const envoyerMessage = () => {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
     try {
-      const rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
-      const content = typeof rawContent === 'string' ? rawContent : (JSON.stringify(rawContent) || String(rawContent))
-      const msg = {
+      var rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
+      var content = typeof rawContent === 'string' ? rawContent : (JSON.stringify(rawContent) || String(rawContent))
+      var msg = {
         id: Date.now(),
         from: shortAddr(account),
         to: activeConversation.participants.find(p => p !== shortAddr(account)),
-        content, type: 'text',
+        content: content, type: 'text',
         encrypted: !!naclKeyPair && content !== newMessage,
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(), read: false
       }
-      const updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
-      setMessages(prev => {
-        const e = prev.find(c => c.key === activeConversation.key)
-        if (!e) return [...prev, updated]
-        return prev.map(c => c.key === activeConversation.key ? updated : c)
+      var updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
+      setMessages(function(prev) {
+        var existing = prev.find(function(c) { return c.key === activeConversation.key })
+        if (!existing) return [...prev, updated]
+        return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
       })
       setActiveConversation(updated); setNewMessage('')
-      envoyerNotif('✉️ ZoneFree', `Message envoyé à ${msg.to}`)
+      envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
     } catch (err) {
       console.error('envoyerMessage crash:', err)
-      alert('Erreur envoi: ' + err.message)
+      alert('Erreur envoi: ' + (err && err.message ? err.message : String(err)))
     }
   }
 
@@ -839,7 +813,7 @@ function App() {
                       <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
                       <div className="conv-info">
                         <div className="conv-addr">{other}</div>
-                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { const c = lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
+                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : (() => { try { var c = lastMsg.encrypted ? naclDecrypt(lastMsg.content) : (lastMsg.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '...' } })()) : 'Démarrer la conversation...'}</div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                         {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
@@ -887,7 +861,7 @@ function App() {
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
                     ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { const c = m.encrypted ? naclDecrypt(m.content) : (m.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '[erreur affichage]' } })()}</div>
+                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{(() => { try { var c = m.encrypted ? naclDecrypt(m.content) : (m.content || '...'); return typeof c === 'string' ? c : JSON.stringify(c) } catch(e) { return '[erreur affichage]' } })()}</div>
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
