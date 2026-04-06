@@ -722,12 +722,12 @@ function App() {
   )
 
   // ═══════════════════ HELPERS RENDER ═══════════════════
-  const renderContenu = (msg) => {
+  function renderContenu(msg) {
     if (!msg) return ''
-    const c = msg.content || msg
+    var c = msg.content || msg
     if (typeof c !== 'string') return JSON.stringify(c)
     try {
-      const parsed = JSON.parse(c)
+      var parsed = JSON.parse(c)
       if (parsed && parsed.e) return '[message chiffré]'
       return c
     } catch(e) { return c }
@@ -856,10 +856,10 @@ function App() {
                 <p style={{ opacity: 0.5 }}>Aucun message. Démarrez une conversation !</p>
               </div>
             : <div className="messages-list">
-                {messages.map(conv => {
-                  const other = conv.participants.find(p => p !== shortAddr(account)) || conv.participants[0]
-                  const lastMsg = conv.msgs[conv.msgs.length - 1]
-                  const unread = conv.msgs.filter(m => m.to === shortAddr(account) && !m.read).length
+                {messages.map(function(conv) {
+                  var other = conv.participants.find(function(p) { return p !== shortAddr(account) }) || conv.participants[0]
+                  var lastMsg = conv.msgs[conv.msgs.length - 1]
+                  var unread = conv.msgs.filter(function(m) { return m.to === shortAddr(account) && !m.read }).length
                   return (
                     <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
                       <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
@@ -907,8 +907,8 @@ function App() {
           </div>
           <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
             {activeConversation.msgs.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
-            {activeConversation.msgs.map(m => {
-              const isSent = m.from === shortAddr(account)
+            {activeConversation.msgs.map(function(m) {
+              var isSent = m.from === shortAddr(account)
               return (
                 <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
                   {m.type === 'image'
@@ -917,10 +917,10 @@ function App() {
                   }
                   <div className="bubble-time">{m.date}</div>
                   {isSent && (
-                    <button onClick={() => {
-                      const updatedMsgs = activeConversation.msgs.filter(msg => msg.id !== m.id)
-                      const updatedConv = { ...activeConversation, msgs: updatedMsgs }
-                      setMessages(prev => prev.map(c => c.key === activeConversation.key ? updatedConv : c))
+                    <button onClick={function() {
+                      var updatedMsgs = activeConversation.msgs.filter(function(msg) { return msg.id !== m.id })
+                      var updatedConv = { ...activeConversation, msgs: updatedMsgs }
+                      setMessages(function(prev) { return prev.map(function(c) { return c.key === activeConversation.key ? updatedConv : c }) })
                       setActiveConversation(updatedConv)
                     }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, opacity: 0.5, marginTop: 2 }}>🗑️</button>
                   )}
