@@ -454,8 +454,8 @@ function App() {
         return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
       })
       setActiveConversation(updated); setNewMessage('')
-      envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
-      sauvegarderConvIPFS(activeConversation.key, updated.msgs)
+      // TEST: envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
+      // TEST: sauvegarderConvIPFS(activeConversation.key, updated.msgs)
     } catch (err) {
       console.error('envoyerMessage crash:', err)
       alert('Erreur envoi: ' + (err && err.message ? err.message : String(err)))
@@ -751,6 +751,7 @@ function App() {
   }
 
   // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
+  // eslint-disable-next-line no-unused-vars
   const sauvegarderConvIPFS = async (convKey, msgs) => {
     if (!everlandJWT) return
     try {
