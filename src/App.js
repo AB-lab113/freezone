@@ -265,6 +265,14 @@ function App() {
       console.warn('localStorage plein', e)
     }
   }, [messages])
+  useEffect(function() {
+    Object.keys(localStorage).forEach(function(k) {
+      if (k.indexOf('zonefree-conv-cid-') === 0) {
+        localStorage.removeItem(k)
+      }
+    })
+  }, [])
+
   useEffect(() => {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
@@ -467,26 +475,8 @@ function App() {
     }
   }
 
-  const ouvrirConversation = async (conv) => {
-    var localMsgs = conv.msgs || []
-    try {
-      var ipfsMsgs = await chargerConvIPFS(conv.key)
-      if (ipfsMsgs && ipfsMsgs.length > 0) {
-        var localIds = new Set(localMsgs.map(function(m) { return m.id }))
-        var merged = localMsgs.concat(ipfsMsgs.filter(function(m) { return !localIds.has(m.id) }))
-        merged.sort(function(a, b) { return (a.timestamp || a.id) - (b.timestamp || b.id) })
-        localMsgs = merged
-      }
-    } catch (e) { console.warn('IPFS merge skipped:', e) }
-    var updated = messages.map(function(c) {
-      if (c.key !== conv.key) return c
-      var newMsgs = localMsgs.map(function(m) {
-        return m.to === shortAddr(account) ? Object.assign({}, m, { read: true }) : m
-      })
-      return Object.assign({}, c, { msgs: newMsgs })
-    })
-    setMessages(updated)
-    setActiveConversation(updated.find(function(c) { return c.key === conv.key }))
+  function ouvrirConversation(conv) {
+    setActiveConversation(conv)
     setPage('conversation')
   }
 
@@ -742,6 +732,7 @@ function App() {
     } catch (e) { console.error('IPFS conv save error:', e) }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const chargerConvIPFS = async (convKey) => {
     try {
       var cid = localStorage.getItem('zonefree-conv-cid-' + convKey)
