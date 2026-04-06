@@ -1227,23 +1227,25 @@ function App() {
           </div>
           {topicsPaginated.length === 0
             ? <div className="no-results"><span>🔍</span><p>Aucun topic trouvé.</p></div>
-            : topicsPaginated.map(t => {
-                const likeKey = `${activeForum.id}-${t.id}`
-                const { count, hasLiked } = getLike(likeKey)
+            : topicsPaginated.map(function(t) {
+                var likeKey = activeForum.id + '-' + t.id
+                var likeData = getLike(likeKey)
+                var count = likeData.count
+                var hasLiked = likeData.hasLiked
                 return (
-                  <div key={t.id} className="topic-card" onClick={() => openTopic(t)}>
+                  <div key={t.id} className="topic-card" onClick={function() { openTopic(t) }}>
                     <div style={{ flex: 1 }}>
                       <div className="topic-title">
                         {t.pinned && <span style={{ marginRight: 6 }}>📌</span>}
                         {t.title}
                       </div>
                       <div className="topic-meta">par {t.author} · {t.date}</div>
-                      <div style={{ marginTop: 8 }} onClick={e => e.stopPropagation()}>
-                        <button className={`like-btn ${hasLiked ? 'liked' : ''}`} onClick={() => toggleLike(likeKey)}>
+                      <div style={{ marginTop: 8 }} onClick={function(e) { e.stopPropagation() }}>
+                        <button className={'like-btn ' + (hasLiked ? 'liked' : '')} onClick={function() { toggleLike(likeKey) }}>
                           ❤️ {count > 0 ? count : ''} J'aime
                         </button>
                         {estAbonne && (
-                          <button className="like-btn" onClick={e => { e.stopPropagation(); togglePin(t.id) }} style={{ marginLeft: 8, opacity: 0.7 }}>
+                          <button className="like-btn" onClick={function(e) { e.stopPropagation(); togglePin(t.id) }} style={{ marginLeft: 8, opacity: 0.7 }}>
                             {t.pinned ? '📌 Désépingler' : '📌 Épingler'}
                           </button>
                         )}
@@ -1278,23 +1280,23 @@ function App() {
             <p style={{ opacity: 0.5, fontSize: 13, marginBottom: 16 }}>par <strong>{activeTopic.author}</strong> · {activeTopic.date}</p>
             {activeTopic.content && <p style={{ fontSize: 15, lineHeight: 1.7 }}>{activeTopic.content}</p>}
             <div style={{ marginTop: 16 }}>
-              <button className={`like-btn ${getLike(`${activeForum?.id}-${activeTopic.id}`).hasLiked ? 'liked' : ''}`} onClick={() => toggleLike(`${activeForum?.id}-${activeTopic.id}`)}>
-                ❤️ {getLike(`${activeForum?.id}-${activeTopic.id}`).count || ''} J'aime
+              <button className={'like-btn ' + (getLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id).hasLiked ? 'liked' : '')} onClick={function() { toggleLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id) }}>
+                ❤️ {getLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id).count || ''} J'aime
               </button>
             </div>
           </div>
           <h3 style={{ marginBottom: 16, opacity: 0.7 }}>
             {activeTopic.replies.length} réponse{activeTopic.replies.length !== 1 ? 's' : ''}
           </h3>
-          {activeTopic.replies.map(r => (
+          {activeTopic.replies.map(function(r) { return (
             <div key={r.id} style={{ borderRadius: 12, padding: '16px 20px', marginBottom: 12, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
               <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 8 }}><strong>{r.author}</strong> · {r.date}</p>
               <p style={{ fontSize: 15, lineHeight: 1.6 }}>{r.content}</p>
-              <button className={`like-btn ${getLike(`reply-${r.id}`).hasLiked ? 'liked' : ''}`} style={{ marginTop: 8 }} onClick={() => toggleLike(`reply-${r.id}`)}>
-                ❤️ {getLike(`reply-${r.id}`).count || ''} J'aime
+              <button className={'like-btn ' + (getLike('reply-' + r.id).hasLiked ? 'liked' : '')} style={{ marginTop: 8 }} onClick={function() { toggleLike('reply-' + r.id) }}>
+                ❤️ {getLike('reply-' + r.id).count || ''} J'aime
               </button>
             </div>
-          ))}
+          )})}
           <div style={{ borderRadius: 14, padding: 24, marginTop: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
             <h3 style={{ marginBottom: 16 }}>✍️ Votre réponse</h3>
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez MetaMask pour répondre</p>}
