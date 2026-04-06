@@ -422,7 +422,7 @@ function App() {
     if (existing) { setActiveConversation(existing) }
     else {
       const nc = { id: Date.now(), key, participants: [shortAddr(account), addr], msgs: [] }
-      setMessages(prev => [...prev, nc])
+      setMessages(function(prev) { return prev.concat([nc]) })
       setActiveConversation(nc)
     }
     setShowNewConversation(false); setNewMessageTo(''); setPage('conversation')
@@ -441,10 +441,10 @@ function App() {
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(), read: false
       }
-      var updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
+      var updated = Object.assign({}, activeConversation, { msgs: activeConversation.msgs.concat([msg]) })
       setMessages(function(prev) {
         var existing = prev.find(function(c) { return c.key === activeConversation.key })
-        if (!existing) return [...prev, updated]
+        if (!existing) return prev.concat([updated])
         return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
       })
       setActiveConversation(updated); setNewMessage('')
@@ -471,8 +471,8 @@ function App() {
             date: new Date().toLocaleDateString('fr-FR'),
             timestamp: Date.now(), read: false
           }
-          const updated = { ...activeConversation, msgs: [...activeConversation.msgs, msg] }
-          setMessages(prev => prev.map(c => c.key === activeConversation.key ? updated : c))
+          var updated = Object.assign({}, activeConversation, { msgs: activeConversation.msgs.concat([msg]) })
+          setMessages(function(prev) { return prev.map(function(c) { return c.key === activeConversation.key ? updated : c }) })
           setActiveConversation(updated)
         } catch (err) {
           console.error('envoyerImage onload crash:', err)
@@ -492,16 +492,20 @@ function App() {
       var ipfsMsgs = await chargerConvIPFS(conv.key)
       if (ipfsMsgs && ipfsMsgs.length > 0) {
         var localIds = new Set(localMsgs.map(function(m) { return m.id }))
-        var merged = [...localMsgs, ...ipfsMsgs.filter(function(m) { return !localIds.has(m.id) })]
+        var merged = localMsgs.concat(ipfsMsgs.filter(function(m) { return !localIds.has(m.id) }))
         merged.sort(function(a, b) { return (a.timestamp || a.id) - (b.timestamp || b.id) })
         localMsgs = merged
       }
     } catch (e) { console.warn('IPFS merge skipped:', e) }
-    var updated = messages.map(c => c.key === conv.key
-      ? { ...c, msgs: localMsgs.map(m => m.to === shortAddr(account) ? { ...m, read: true } : m) }
-      : c)
+    var updated = messages.map(function(c) {
+      if (c.key !== conv.key) return c
+      var newMsgs = localMsgs.map(function(m) {
+        return m.to === shortAddr(account) ? Object.assign({}, m, { read: true }) : m
+      })
+      return Object.assign({}, c, { msgs: newMsgs })
+    })
     setMessages(updated)
-    setActiveConversation(updated.find(c => c.key === conv.key))
+    setActiveConversation(updated.find(function(c) { return c.key === conv.key }))
     setPage('conversation')
   }
 
