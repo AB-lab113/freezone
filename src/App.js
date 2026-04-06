@@ -442,7 +442,34 @@ function App() {
     setShowNewConversation(false); setNewMessageTo(''); setPage('conversation')
   }
 
-  function envoyerMessage() { return }
+  function envoyerMessage() {
+    if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
+    try {
+      var content = newMessage
+      var msg = {
+        id: Date.now(),
+        from: shortAddr(account),
+        to: activeConversation.participants.find(function(p) { return p !== shortAddr(account) }),
+        content: content,
+        type: 'text',
+        encrypted: false,
+        date: new Date().toLocaleDateString('fr-FR'),
+        timestamp: Date.now(),
+        read: false
+      }
+      var newMsgs = activeConversation.msgs.concat([msg])
+      var updatedConv = Object.assign({}, activeConversation, { msgs: newMsgs })
+      setActiveConversation(updatedConv)
+      setMessages(function(prev) {
+        return prev.map(function(c) {
+          return c.key === activeConversation.key ? updatedConv : c
+        })
+      })
+      setNewMessage('')
+    } catch (err) {
+      console.error('envoyerMessage crash:', err)
+    }
+  }
 
   // eslint-disable-next-line no-unused-vars
   const envoyerImage = (e) => {
