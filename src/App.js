@@ -431,14 +431,13 @@ function App() {
   const envoyerMessage = () => {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
     try {
-      var rawContent = naclKeyPair ? naclEncrypt(newMessage) : newMessage
-      var content = typeof rawContent === 'string' ? rawContent : (JSON.stringify(rawContent) || String(rawContent))
+      var content = newMessage
       var msg = {
         id: Date.now(),
         from: shortAddr(account),
         to: activeConversation.participants.find(p => p !== shortAddr(account)),
         content: content, type: 'text',
-        encrypted: !!naclKeyPair && content !== newMessage,
+        encrypted: false,
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(), read: false
       }
@@ -538,6 +537,7 @@ function App() {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const naclEncrypt = (text) => {
     if (!naclKeyPair) return String(text)
     try {
@@ -555,6 +555,7 @@ function App() {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const naclDecrypt = (data) => {
     if (!data) return '...'
     if (typeof data !== 'string') return String(data)
@@ -722,12 +723,14 @@ function App() {
 
   // ═══════════════════ HELPERS RENDER ═══════════════════
   const renderContenu = (msg) => {
-    if (!msg || !msg.content) return '...'
-    if (msg.encrypted) {
-      var d = naclDecrypt(msg.content)
-      return typeof d === 'string' ? d : String(d)
-    }
-    return typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    if (!msg) return ''
+    const c = msg.content || msg
+    if (typeof c !== 'string') return JSON.stringify(c)
+    try {
+      const parsed = JSON.parse(c)
+      if (parsed && parsed.e) return '[message chiffré]'
+      return c
+    } catch(e) { return c }
   }
 
   // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
