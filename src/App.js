@@ -447,13 +447,16 @@ function App() {
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(), read: false
       }
+      // eslint-disable-next-line no-unused-vars
       var updated = Object.assign({}, activeConversation, { msgs: activeConversation.msgs.concat([msg]) })
-      setMessages(function(prev) {
-        var existing = prev.find(function(c) { return c.key === activeConversation.key })
-        if (!existing) return prev.concat([updated])
-        return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
-      })
-      /* TEST: setActiveConversation(updated); */ setNewMessage('')
+      console.log('envoyerMessage: msg créé', JSON.stringify(msg))
+      // TEST: setMessages(function(prev) {
+      // TEST:   var existing = prev.find(function(c) { return c.key === activeConversation.key })
+      // TEST:   if (!existing) return prev.concat([updated])
+      // TEST:   return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
+      // TEST: })
+      // TEST: setActiveConversation(updated)
+      // TEST: setNewMessage('')
       // TEST: envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
       // TEST: sauvegarderConvIPFS(activeConversation.key, updated.msgs)
     } catch (err) {
