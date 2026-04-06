@@ -714,6 +714,9 @@ function App() {
     color: dark ? '#e6edf3' : '#1a1a2e', fontSize: 15, marginBottom: 16,
     marginTop: 6, boxSizing: 'border-box', fontFamily: 'inherit'
   }
+  var inputStyleCenter = Object.assign({}, inputStyle, { textAlign: 'center', fontWeight: 700, fontSize: 18 })
+  var inputStyleResize = Object.assign({}, inputStyle, { resize: 'vertical' })
+  var inputStyleSmall = Object.assign({}, inputStyle, { fontSize: 13 })
 
   const topicsBase = activeForum?.topics.filter(t =>
     t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
@@ -962,11 +965,11 @@ function App() {
             {editPseudo ? (
               <div style={{ marginBottom: 16 }}>
                 <input value={newPseudo} onChange={e => setNewPseudo(e.target.value)}
-                  style={{ ...inputStyle, textAlign: 'center', fontWeight: 700, fontSize: 18 }}
+                  style={inputStyleCenter}
                   placeholder="Votre pseudo..." autoFocus />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button className="btn btn-primary" onClick={() => {
-                    const clean = newPseudo.trim()
+                  <button className="btn btn-primary" onClick={function() {
+                    var clean = newPseudo.trim()
                     setPseudo(clean)
                     localStorage.setItem('zonefree-pseudo', clean)
                     setEditPseudo(false)
@@ -1302,7 +1305,7 @@ function App() {
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez MetaMask pour répondre</p>}
             {account && !estAbonne && <p style={{ color: '#f59e0b', marginBottom: 12, fontSize: 14 }}>Abonnez-vous pour répondre</p>}
             <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4}
-              style={{ ...inputStyle, resize: 'vertical' }} disabled={!estAbonne} />
+              style={inputStyleResize} disabled={!estAbonne} />
             <button className="btn btn-primary" onClick={posterReponse} style={{ padding: '12px 28px' }} disabled={!estAbonne || !account}>
               Poster la réponse
             </button>
@@ -1337,7 +1340,7 @@ function App() {
             <label style={{ fontSize: 13, opacity: 0.7 }}>Titre</label>
             <input value={newTopic.title} onChange={e => setNewTopic({ ...newTopic, title: e.target.value })} style={inputStyle} placeholder="Titre..." />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Contenu</label>
-            <textarea value={newTopic.content} onChange={e => setNewTopic({ ...newTopic, content: e.target.value })} style={{ ...inputStyle, resize: 'vertical' }} rows={4} placeholder="Développez..." />
+            <textarea value={newTopic.content} onChange={e => setNewTopic({ ...newTopic, content: e.target.value })} style={inputStyleResize} rows={4} placeholder="Développez..." />
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-primary" onClick={creerTopic} style={{ flex: 1 }}>Publier</button>
               <button className="btn btn-ghost" onClick={() => setShowNewTopic(false)} style={{ flex: 1 }}>Annuler</button>
@@ -1361,15 +1364,15 @@ function App() {
             <input
               value={neweverlandJWT}
               onChange={e => setNeweverlandJWT(e.target.value)}
-              style={{ ...inputStyle, fontSize: 13 }}
+              style={inputStyleSmall}
               placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
               type="password"
               autoFocus
             />
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => {
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={function() {
                 if (!neweverlandJWT.trim()) { alert('JWT vide !'); return }
-                const jwt = neweverlandJWT.trim()
+                var jwt = neweverlandJWT.trim()
                 seteverlandJWT(jwt)
                 localStorage.setItem('zonefree-4EVERLAND-jwt', jwt)
                 setShowJWTModal(false)
