@@ -724,6 +724,8 @@ function App() {
   ) || []
   const topicsSorted = sortTopics(topicsBase, activeForum?.id)
   const totalPages = Math.ceil(topicsSorted.length / TOPICS_PAR_PAGE)
+  var pageNums = []
+  for (var pi = 1; pi <= totalPages; pi++) { pageNums.push(pi) }
   const topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE)
   const forumsFiltered = forums.filter(f =>
     f.name.toLowerCase().includes(recherche.toLowerCase()) ||
@@ -1024,12 +1026,12 @@ function App() {
                 { label: 'JOURS RESTANTS', value: estAbonne ? `${joursRestants} jours` : '—', color: joursRestants > 7 ? '#22c55e' : '#f59e0b' },
                 { label: 'EXPIRATION', value: expiration ? expiration.toLocaleDateString('fr-FR') : '—', color: null },
                 { label: 'PRIX', value: estGratuit ? 'GRATUIT 🎁' : `${prixEnETH} ETH`, color: '#6366f1' }
-              ].map((item, i) => (
+              ].map(function(item, i) { return (
                 <div key={i} style={{ borderRadius: 12, padding: 20, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
                   <div style={{ fontSize: 12, opacity: 0.5, marginBottom: 6 }}>{item.label}</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: item.color || 'inherit' }}>{item.value}</div>
                 </div>
-              ))}
+              )})}
             </div>
             {estAbonne && (
               <div style={{ marginTop: 24 }}>
@@ -1051,13 +1053,13 @@ function App() {
                 { label: 'Topics créés', value: forums.reduce((a, f) => a + f.topics.filter(t => t.author === displayName(account)).length, 0), icon: '📝' },
                 { label: 'Réponses', value: forums.reduce((a, f) => a + f.topics.reduce((b, t) => b + t.replies.filter(r => r.author === displayName(account)).length, 0), 0), icon: '💬' },
                 { label: 'Messages', value: messages.reduce((a, c) => a + c.msgs.filter(m => m.from === shortAddr(account)).length, 0), icon: '✉️' }
-              ].map((stat, i) => (
+              ].map(function(stat, i) { return (
                 <div key={i} style={{ borderRadius: 12, padding: 20, textAlign: 'center', background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
                   <div style={{ fontSize: 28, fontWeight: 800, color: '#6366f1' }}>{stat.value}</div>
                   <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{stat.label}</div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
 
@@ -1185,24 +1187,24 @@ function App() {
           {forumsFiltered.length === 0
             ? <div className="no-results"><span>🔍</span><p>Aucun salon trouvé pour <strong>{recherche}</strong></p></div>
             : <div className="forums-grid">
-                {forumsFiltered.map(f => (
-                  <div key={f.id} className="forum-card" onClick={() => openForum(f)}>
+                {forumsFiltered.map(function(f) { return (
+                  <div key={f.id} className="forum-card" onClick={function() { openForum(f) }}>
                     <div className="forum-emoji">{f.emoji}</div>
                     <div className="forum-name">{f.name}</div>
                     <div className="forum-desc">{f.description}</div>
                     <div className="forum-meta">
                       <span>{f.topics.length} topics</span>
-                      <span>{f.topics.reduce((a, t) => a + t.replies.length, 0)} réponses</span>
-                      {f.topics.some(t => t.pinned) && <span>📌</span>}
+                      <span>{f.topics.reduce(function(a, t) { return a + t.replies.length }, 0)} réponses</span>
+                      {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
                     {account && estAbonne && f.creator === account && (
-                      <button onClick={e => { e.stopPropagation(); supprimerSalon(f.id) }}
+                      <button onClick={function(e) { e.stopPropagation(); supprimerSalon(f.id) }}
                         style={{ marginTop: 8, fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #ef444444', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
                         🗑️ Supprimer
                       </button>
                     )}
                   </div>
-                ))}
+                )})}
               </div>
           }
         </div>
@@ -1224,9 +1226,13 @@ function App() {
           </div>
           <div className="sort-bar">
             <span style={{ fontSize: 13, opacity: 0.6 }}>Trier par </span>
-            {[['date', 'Plus récents'], ['popular', 'Populaires'], ['replies', 'Plus de réponses']].map(([val, label]) => (
-              <button key={val} className={`sort-btn ${sortBy === val ? 'active' : ''}`} onClick={() => { setSortBy(val); setCurrentPage(1) }}>{label}</button>
-            ))}
+            {[['date', 'Plus récents'], ['popular', 'Populaires'], ['replies', 'Plus de réponses']].map(function(item) {
+              var val = item[0]
+              var label = item[1]
+              return (
+                <button key={val} className={'sort-btn ' + (sortBy === val ? 'active' : '')} onClick={function() { setSortBy(val); setCurrentPage(1) }}>{label}</button>
+              )
+            })}
           </div>
           {topicsPaginated.length === 0
             ? <div className="no-results"><span>🔍</span><p>Aucun topic trouvé.</p></div>
@@ -1261,11 +1267,11 @@ function App() {
           }
           {totalPages > 1 && (
             <div className="pagination">
-              <button className="page-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>←</button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button key={n} className={`page-btn ${currentPage === n ? 'active' : ''}`} onClick={() => setCurrentPage(n)}>{n}</button>
-              ))}
-              <button className="page-btn" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>→</button>
+              <button className="page-btn" disabled={currentPage === 1} onClick={function() { setCurrentPage(function(p) { return p - 1 }) }}>←</button>
+              {pageNums.map(function(n) { return (
+                <button key={n} className={'page-btn ' + (currentPage === n ? 'active' : '')} onClick={function() { setCurrentPage(n) }}>{n}</button>
+              )})}
+              <button className="page-btn" disabled={currentPage === totalPages} onClick={function() { setCurrentPage(function(p) { return p + 1 }) }}>→</button>
             </div>
           )}
         </div>
