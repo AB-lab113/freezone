@@ -249,12 +249,17 @@ function App() {
     document.body.className = dark ? 'dark' : 'light'
   }, [dark])
   useEffect(() => { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
-  useEffect(() => {
+  useEffect(function() {
     try {
-      const msgsSansImages = messages.map(conv => ({
-        ...conv,
-        msgs: conv.msgs.map(m => m.type === 'image' ? { ...m, content: '[image]' } : m)
-      }))
+      var msgsSansImages = messages.map(function(conv) {
+        var msgs2 = conv.msgs.map(function(m) {
+          if (m.type === 'image') {
+            return Object.assign({}, m, { content: '[image]' })
+          }
+          return m
+        })
+        return Object.assign({}, conv, { msgs: msgs2 })
+      })
       localStorage.setItem('zonefree-messages', JSON.stringify(msgsSansImages))
     } catch (e) {
       console.warn('localStorage plein', e)
