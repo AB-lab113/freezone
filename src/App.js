@@ -453,7 +453,7 @@ function App() {
         if (!existing) return prev.concat([updated])
         return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
       })
-      setActiveConversation(updated); setNewMessage('')
+      /* TEST: setActiveConversation(updated); */ setNewMessage('')
       // TEST: envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
       // TEST: sauvegarderConvIPFS(activeConversation.key, updated.msgs)
     } catch (err) {
