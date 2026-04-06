@@ -183,6 +183,7 @@ function App() {
   const [newMessage, setNewMessage] = useState('')
   const [newMessageTo, setNewMessageTo] = useState('')
   const [showNewConversation, setShowNewConversation] = useState(false)
+  // eslint-disable-next-line no-unused-vars
   const imageInputRef = useRef(null)
 
   // ─── NACL E2E ───
@@ -456,6 +457,7 @@ function App() {
     }
   }
 
+  // eslint-disable-next-line no-unused-vars
   const envoyerImage = (e) => {
     try {
       const file = e.target.files[0]
@@ -900,54 +902,45 @@ function App() {
       )}
 
       {/* ══════════════ PAGE CONVERSATION LOCALE ══════════════ */}
-      {page === 'conversation' && activeConversation && account && (
-        <MessagerieErrorBoundary>
-        <div className="forum-page" style={{ padding: 0 }}>
-          <div style={{ padding: '16px 24px', borderBottom: '1.5px solid #30363d', display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button className="back-btn" style={{ margin: 0 }} onClick={() => setPage('messages')}>←</button>
-            <div className="conv-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>💬</div>
-            <div style={{ fontWeight: 700 }}>{activeConversation.participants.find(p => p !== shortAddr(account))}</div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, opacity: 0.5 }}>{naclKeyPair ? '🔐 NaCl' : '🔒 Local'}</div>
-          </div>
-          <div className="chat-container" style={{ minHeight: 400, maxHeight: 500, overflowY: 'auto' }}>
-            {activeConversation.msgs.length === 0 && <div style={{ textAlign: 'center', opacity: 0.4, marginTop: 40 }}>Aucun message — Dites bonjour ! 👋</div>}
+      {page === 'conversation' && activeConversation && (
+        <div className="forum-page">
+          <button onClick={function() { setPage('messages') }}>← Retour</button>
+          <h2>💬 {activeConversation.participants[1] || activeConversation.participants[0]}</h2>
+          <div className="chat-container">
+            {activeConversation.msgs.length === 0 && (
+              <div style={{textAlign:'center', opacity:0.4, marginTop:40}}>Aucun message — Dites bonjour ! 👋</div>
+            )}
             {activeConversation.msgs.map(function(m) {
-              var isSent = m.from === shortAddr(account)
-              return (
-                <div key={m.id} className={`bubble-wrapper ${isSent ? 'sent' : 'received'}`}>
-                  {m.type === 'image'
-                    ? <img src={m.content} alt="img" style={{ maxWidth: 240, borderRadius: 12 }} />
-                    : <div className={`bubble ${isSent ? 'sent' : 'received'}`}>{renderContenu(m)}</div>
-                  }
-                  <div className="bubble-time">{m.date}</div>
-                  {isSent && (
-                    <button onClick={function() {
-                      var updatedMsgs = activeConversation.msgs.filter(function(msg) { return msg.id !== m.id })
-                      var updatedConv = { ...activeConversation, msgs: updatedMsgs }
-                      setMessages(function(prev) { return prev.map(function(c) { return c.key === activeConversation.key ? updatedConv : c }) })
-                      setActiveConversation(updatedConv)
-                    }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, opacity: 0.5, marginTop: 2 }}>🗑️</button>
-                  )}
-                </div>
+              var estMoi = m.from === shortAddr(account)
+              var contenu = ''
+              if (m && m.content) {
+                if (typeof m.content === 'string') {
+                  contenu = m.content
+                } else {
+                  contenu = String(m.content)
+                }
+              }
+              var wrapperClass = estMoi ? 'bubble-wrapper sent' : 'bubble-wrapper received'
+              var bubbleClass = estMoi ? 'bubble sent' : 'bubble received'
+              return React.createElement('div', {key: m.id, className: wrapperClass},
+                m.type === 'image'
+                  ? React.createElement('img', {src: contenu, alt: 'img', style: {maxWidth:240, borderRadius:12}})
+                  : React.createElement('div', {className: bubbleClass}, contenu),
+                React.createElement('div', {className: 'bubble-time'}, m.date)
               )
             })}
           </div>
-          <div className="message-input-bar">
-            {!estAbonne
-              ? <p style={{ color: '#f59e0b', fontSize: 14, margin: 0 }}>Abonnement requis pour envoyer</p>
-              : <>
-                  <textarea className="message-input" rows={1} value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerMessage() } }}
-                    placeholder="Écrire un message... (Entrée pour envoyer)" />
-                  <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={envoyerImage} />
-                  <button className="btn btn-ghost" onClick={() => imageInputRef.current?.click()} style={{ fontSize: 18, padding: '8px 10px' }}>📷</button>
-                  <button className="send-btn" onClick={envoyerMessage} disabled={!newMessage.trim()}>➤</button>
-                </>
-            }
+          <div style={{display:'flex', gap:8, marginTop:12}}>
+            <input
+              className="msg-input"
+              placeholder="Écrire un message... (Entrée pour envoyer)"
+              value={newMessage}
+              onChange={function(e) { setNewMessage(e.target.value) }}
+              onKeyDown={function(e) { if (e.key === 'Enter') envoyerMessage() }}
+            />
+            <button onClick={envoyerMessage}>➤</button>
           </div>
         </div>
-        </MessagerieErrorBoundary>
       )}
 
       {/* ══════════════ PAGE PROFIL ══════════════ */}
