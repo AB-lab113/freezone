@@ -728,6 +728,7 @@ function App() {
   )
 
   // ═══════════════════ HELPERS RENDER ═══════════════════
+  // eslint-disable-next-line no-unused-vars
   function renderContenu(msg) {
     if (!msg) return ''
     var c = msg.content || msg
@@ -864,20 +865,27 @@ function App() {
             : <div className="messages-list">
                 {messages.map(function(conv) {
                   var other = conv.participants.find(function(p) { return p !== shortAddr(account) }) || conv.participants[0]
-                  var lastMsg = conv.msgs[conv.msgs.length - 1]
-                  var unread = conv.msgs.filter(function(m) { return m.to === shortAddr(account) && !m.read }).length
-                  return (
-                    <div key={conv.id} className="conversation-item" onClick={() => ouvrirConversation(conv)}>
-                      <div className="conv-avatar">{naclKeyPair ? '🔐' : '💬'}</div>
-                      <div className="conv-info">
-                        <div className="conv-addr">{other}</div>
-                        <div className="conv-preview">{lastMsg ? (lastMsg.type === 'image' ? '📷 Image' : renderContenu(lastMsg)) : 'Démarrer la conversation...'}</div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                        {lastMsg && <div className="conv-time">{lastMsg.date}</div>}
-                        {unread > 0 && <div className="unread-badge">{unread}</div>}
-                      </div>
-                    </div>
+                  var lastMsg = conv.msgs && conv.msgs.length > 0 ? conv.msgs[conv.msgs.length - 1] : null
+                  var preview = ''
+                  if (lastMsg && lastMsg.content) {
+                    if (typeof lastMsg.content === 'string') {
+                      preview = lastMsg.content.substring(0, 40)
+                    } else {
+                      preview = '[message]'
+                    }
+                  } else {
+                    preview = 'Démarrer la conversation...'
+                  }
+                  return React.createElement('div', {
+                    key: conv.id,
+                    className: 'conversation-item',
+                    onClick: function() { ouvrirConversation(conv) }
+                  },
+                    React.createElement('div', {className: 'conv-avatar'}, '🔐'),
+                    React.createElement('div', {className: 'conv-info'},
+                      React.createElement('div', {className: 'conv-name'}, other),
+                      React.createElement('div', {className: 'conv-preview'}, preview)
+                    )
                   )
                 })}
               </div>
