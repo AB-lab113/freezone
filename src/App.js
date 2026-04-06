@@ -434,36 +434,7 @@ function App() {
     setShowNewConversation(false); setNewMessageTo(''); setPage('conversation')
   }
 
-  const envoyerMessage = () => {
-    if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
-    try {
-      var content = newMessage
-      var msg = {
-        id: Date.now(),
-        from: shortAddr(account),
-        to: activeConversation.participants.find(p => p !== shortAddr(account)),
-        content: content, type: 'text',
-        encrypted: false,
-        date: new Date().toLocaleDateString('fr-FR'),
-        timestamp: Date.now(), read: false
-      }
-      // eslint-disable-next-line no-unused-vars
-      var updated = Object.assign({}, activeConversation, { msgs: activeConversation.msgs.concat([msg]) })
-      console.log('envoyerMessage: msg créé', JSON.stringify(msg))
-      // TEST: setMessages(function(prev) {
-      // TEST:   var existing = prev.find(function(c) { return c.key === activeConversation.key })
-      // TEST:   if (!existing) return prev.concat([updated])
-      // TEST:   return prev.map(function(c) { return c.key === activeConversation.key ? updated : c })
-      // TEST: })
-      // TEST: setActiveConversation(updated)
-      // TEST: setNewMessage('')
-      // TEST: envoyerNotif('✉️ ZoneFree', 'Message envoyé à ' + msg.to)
-      // TEST: sauvegarderConvIPFS(activeConversation.key, updated.msgs)
-    } catch (err) {
-      console.error('envoyerMessage crash:', err)
-      alert('Erreur envoi: ' + (err && err.message ? err.message : String(err)))
-    }
-  }
+  function envoyerMessage() { return }
 
   // eslint-disable-next-line no-unused-vars
   const envoyerImage = (e) => {
@@ -958,7 +929,7 @@ function App() {
               placeholder="Écrire un message... (Entrée pour envoyer)"
               value={newMessage}
               onChange={function(e) { setNewMessage(e.target.value) }}
-              onKeyDown={function(e) { if (e.key === 'Enter') envoyerMessage() }}
+              onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); envoyerMessage() } }}
             />
             <button onClick={envoyerMessage}>➤</button>
           </div>
