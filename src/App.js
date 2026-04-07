@@ -6,12 +6,12 @@ import naclUtil from 'tweetnacl-util'
 import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
-const CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
-const TOPICS_PAR_PAGE = 5
-const IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
+var CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
+var TOPICS_PAR_PAGE = 5
+var IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
 
 
-const FORUMS_INIT = [
+var FORUMS_INIT = [
   {
     id: 'general', emoji: '💬', name: 'Général',
     description: 'Discussions libres, actualités du jour',
@@ -60,13 +60,13 @@ const FORUMS_INIT = [
 ]
 
 // ─── MIGRATION PSEUDO ───
-const getPseudoFromStorage = () => {
+var getPseudoFromStorage = () => {
   // 1. Cherche d'abord dans la nouvelle clé
-  let stored = localStorage.getItem('zonefree-pseudo') || ''
+  var stored = localStorage.getItem('zonefree-pseudo') || ''
 
   // 2. Fallback sur l'ancienne clé 'pseudo' (migration)
   if (!stored) {
-    const oldStored = localStorage.getItem('pseudo') || ''
+    var oldStored = localStorage.getItem('pseudo') || ''
     if (oldStored) {
       stored = oldStored
       // Nettoie l'ancienne clé après migration
@@ -77,19 +77,19 @@ const getPseudoFromStorage = () => {
   if (!stored) return ''
 
   try {
-    const parsed = JSON.parse(stored)
+    var parsed = JSON.parse(stored)
     if (typeof parsed === 'object' && parsed !== null) {
-      const valeur = String(Object.values(parsed)[0] || '')
+      var valeur = String(Object.values(parsed)[0] || '')
       localStorage.setItem('zonefree-pseudo', valeur)
       return valeur
     }
     return stored
   } catch (e) {
-    const match = stored.match(/"([^"]+)"[:\s]*"?([^"{}]+)"?/)
+    var match = stored.match(/"([^"]+)"[:\s]*"?([^"{}]+)"?/)
     if (match && match[2]) {
-      const valeur = match[2].trim()
-      localStorage.setItem('zonefree-pseudo', valeur)
-      return valeur
+      var valeurMatch = match[2].trim()
+      localStorage.setItem('zonefree-pseudo', valeurMatch)
+      return valeurMatch
     }
     if (stored.startsWith('{') || stored.startsWith('[')) {
       localStorage.setItem('zonefree-pseudo', '')
@@ -143,12 +143,12 @@ class AppErrorBoundary extends React.Component {
 
 function App() {
   // ─── REOWN APPKIT HOOKS ───
-  const { open: openModal } = useAppKit()
-  const { isConnected, address } = useAppKitAccount()
-  const { walletProvider } = useAppKitProvider('eip155')
-  const { disconnect } = useDisconnect()
+  var { open: openModal } = useAppKit()
+  var { isConnected, address } = useAppKitAccount()
+  var { walletProvider } = useAppKitProvider('eip155')
+  var { disconnect } = useDisconnect()
 
-  const disconnectAll = async () => {
+  var disconnectAll = async () => {
     try { await disconnect() } catch(e) {}
     setAccount(null)
     setEstAbonne(false)
@@ -156,78 +156,78 @@ function App() {
   }
 
   // ─── THEME ───
-  const [dark, setDark] = useState(() => {
-    const s = localStorage.getItem('zonefree-dark')
+  var [dark, setDark] = useState(() => {
+    var s = localStorage.getItem('zonefree-dark')
     return s !== null ? JSON.parse(s) : true
   })
 
   // ─── WALLET / BLOCKCHAIN ───
-  const [account, setAccount] = useState(null)
-  const [estAbonne, setEstAbonne] = useState(false)
-  const [loadingAbo, setLoadingAbo] = useState(false)
-  const [expiration, setExpiration] = useState(null)
-  const [prixETH, setPrixETH] = useState(null)
-  const [totalAbonnes, setTotalAbonnes] = useState(null)
-  const [maxGratuit, setMaxGratuit] = useState(300)
-  const [udDomain, setUdDomain] = useState(null)
+  var [account, setAccount] = useState(null)
+  var [estAbonne, setEstAbonne] = useState(false)
+  var [loadingAbo, setLoadingAbo] = useState(false)
+  var [expiration, setExpiration] = useState(null)
+  var [prixETH, setPrixETH] = useState(null)
+  var [totalAbonnes, setTotalAbonnes] = useState(null)
+  var [maxGratuit, setMaxGratuit] = useState(300)
+  var [udDomain, setUdDomain] = useState(null)
 
   // ─── NAVIGATION ───
-  const [page, setPage] = useState('home')
+  var [page, setPage] = useState('home')
 
   // ─── PROFIL ───
-  const [pseudo, setPseudo] = useState(getPseudoFromStorage)
-  const [editPseudo, setEditPseudo] = useState(false)
-  const [newPseudo, setNewPseudo] = useState('')
+  var [pseudo, setPseudo] = useState(getPseudoFromStorage)
+  var [editPseudo, setEditPseudo] = useState(false)
+  var [newPseudo, setNewPseudo] = useState('')
 
   // ─── FORUMS ───
-  const [forums, setForums] = useState(() => {
-    const s = localStorage.getItem('zonefree-forums')
+  var [forums, setForums] = useState(() => {
+    var s = localStorage.getItem('zonefree-forums')
     return s ? JSON.parse(s) : FORUMS_INIT
   })
-  const [activeForum, setActiveForum] = useState(null)
-  const [activeTopic, setActiveTopic] = useState(null)
-  const [showNewSalon, setShowNewSalon] = useState(false)
-  const [showNewTopic, setShowNewTopic] = useState(false)
-  const [newSalon, setNewSalon] = useState({ emoji: '', name: '', description: '' })
-  const [newTopic, setNewTopic] = useState({ title: '', content: '' })
-  const [newReply, setNewReply] = useState('')
-  const [recherche, setRecherche] = useState('')
-  const [rechercheTopic, setRechercheTopic] = useState('')
-  const [sortBy, setSortBy] = useState('date')
-  const [currentPage, setCurrentPage] = useState(1)
+  var [activeForum, setActiveForum] = useState(null)
+  var [activeTopic, setActiveTopic] = useState(null)
+  var [showNewSalon, setShowNewSalon] = useState(false)
+  var [showNewTopic, setShowNewTopic] = useState(false)
+  var [newSalon, setNewSalon] = useState({ emoji: '', name: '', description: '' })
+  var [newTopic, setNewTopic] = useState({ title: '', content: '' })
+  var [newReply, setNewReply] = useState('')
+  var [recherche, setRecherche] = useState('')
+  var [rechercheTopic, setRechercheTopic] = useState('')
+  var [sortBy, setSortBy] = useState('date')
+  var [currentPage, setCurrentPage] = useState(1)
 
   // ─── LIKES ───
-  const [likes, setLikes] = useState(() => {
-    const s = localStorage.getItem('zonefree-likes')
+  var [likes, setLikes] = useState(() => {
+    var s = localStorage.getItem('zonefree-likes')
     return s ? JSON.parse(s) : {}
   })
 
   // ─── MESSAGERIE LOCALE ───
-  const [messages, setMessages] = useState(() => {
-    const s = localStorage.getItem('zonefree-messages')
+  var [messages, setMessages] = useState(() => {
+    var s = localStorage.getItem('zonefree-messages')
     return s ? JSON.parse(s) : []
   })
-  const [activeConversation, setActiveConversation] = useState(null)
-  const [newMessage, setNewMessage] = useState('')
-  const [newMessageTo, setNewMessageTo] = useState('')
-  const [showNewConversation, setShowNewConversation] = useState(false)
+  var [activeConversation, setActiveConversation] = useState(null)
+  var [newMessage, setNewMessage] = useState('')
+  var [newMessageTo, setNewMessageTo] = useState('')
+  var [showNewConversation, setShowNewConversation] = useState(false)
   // eslint-disable-next-line no-unused-vars
-  const imageInputRef = useRef(null)
+  var imageInputRef = useRef(null)
 
   // ─── NACL E2E ───
-  const [naclKeyPair, setNaclKeyPair] = useState(null)
-  const [naclLoading, setNaclLoading] = useState(false)
+  var [naclKeyPair, setNaclKeyPair] = useState(null)
+  var [naclLoading, setNaclLoading] = useState(false)
 
   // ─── IPFS / 4EVERLAND ───
-  const [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
-  const [neweverlandJWT, setNeweverlandJWT] = useState('')
-  const [showJWTModal, setShowJWTModal] = useState(false)
-  const [ipfsSaving, setIpfsSaving] = useState(false)
-  const [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
-  const [ipfsStatus, setIpfsStatus] = useState(null)
+  var [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
+  var [neweverlandJWT, setNeweverlandJWT] = useState('')
+  var [showJWTModal, setShowJWTModal] = useState(false)
+  var [ipfsSaving, setIpfsSaving] = useState(false)
+  var [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
+  var [ipfsStatus, setIpfsStatus] = useState(null)
 
   // ─── NOTIFICATIONS ───
-  const [notifPermission, setNotifPermission] = useState(
+  var [notifPermission, setNotifPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'denied'
   )
 
@@ -309,13 +309,13 @@ function App() {
   }, [everlandJWT])
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
-  const demanderNotifications = async () => {
+  var demanderNotifications = async () => {
     if (typeof Notification === 'undefined') {
       alert('Votre navigateur ne supporte pas les notifications.')
       return
     }
     try {
-      const p = await Notification.requestPermission()
+      var p = await Notification.requestPermission()
       setNotifPermission(p)
       if (p === 'granted') {
         new Notification('🔔 ZoneFree', { body: 'Notifications activées avec succès !', icon: '/favicon.ico' })
@@ -327,25 +327,25 @@ function App() {
     }
   }
 
-  const envoyerNotif = (titre, corps) => {
+  var envoyerNotif = (titre, corps) => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification(titre, { body: corps, icon: '/favicon.ico' }) } catch (e) {}
     }
   }
 
   // ═══════════════════ UNSTOPPABLE DOMAINS ═══════════════════
-  const resoudreUD = async (address) => {
+  var resoudreUD = async (address) => {
     if (!address) return null
-    const endpoints = [
+    var endpoints = [
       `https://resolve.unstoppabledomains.com/reverse/${address.toLowerCase()}`,
       `https://api.unstoppabledomains.com/resolve/reverse/${address.toLowerCase()}`
     ]
-    for (const url of endpoints) {
+    for (var url of endpoints) {
       try {
-        const r = await fetch(url, { headers: { 'Accept': 'application/json' } })
+        var r = await fetch(url, { headers: { 'Accept': 'application/json' } })
         if (r.ok) {
-          const d = await r.json()
-          const domain = d?.meta?.domain || d?.data?.domain || null
+          var d = await r.json()
+          var domain = d?.meta?.domain || d?.data?.domain || null
           if (domain) return domain
         }
       } catch (e) {}
@@ -353,10 +353,10 @@ function App() {
     return null
   }
 
-  const detecterUD = async () => {
-    const addr = account || address
+  var detecterUD = async () => {
+    var addr = account || address
     if (!addr) { alert('Connectez votre wallet d\'abord !'); return }
-    const domain = await resoudreUD(addr)
+    var domain = await resoudreUD(addr)
     if (domain) {
       setUdDomain(domain)
       alert(`✅ Domaine trouvé : ${domain}`)
@@ -366,7 +366,7 @@ function App() {
   }
 
   // ═══════════════════ IPFS / 4EVERLAND ═══════════════════
-  const sauvegarderIPFS = async () => {
+  var sauvegarderIPFS = async () => {
     if (!everlandJWT) {
       alert('Configurez d\'abord votre 4EVERLAND JWT dans les paramètres !')
       setShowJWTModal(true)
@@ -375,8 +375,8 @@ function App() {
     setIpfsSaving(true)
     setIpfsStatus(null)
     try {
-      const data = { forums, updatedAt: Date.now(), version: '1.0' }
-      const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
+      var data = { forums, updatedAt: Date.now(), version: '1.0' }
+      var r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -388,11 +388,11 @@ function App() {
         })
       })
       if (!r.ok) {
-        const err = await r.json()
+        var err = await r.json()
         throw new Error(err.error?.details || `HTTP ${r.status}`)
       }
-      const res = await r.json()
-      const cid = res.IpfsHash
+      var res = await r.json()
+      var cid = res.IpfsHash
       localStorage.setItem('zonefree-ipfs-cid', cid)
       setIpfsCID(cid)
       setIpfsStatus('success')
@@ -406,16 +406,16 @@ function App() {
     }
   }
 
-  const sauvegarderIPFSAuto = async (data) => {
+  var sauvegarderIPFSAuto = async (data) => {
     if (!everlandJWT) return null
     try {
-      const r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
+      var r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
         body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
       })
       if (!r.ok) return null
-      const res = await r.json()
+      var res = await r.json()
       localStorage.setItem('zonefree-ipfs-cid', res.IpfsHash)
       setIpfsCID(res.IpfsHash)
       return res.IpfsHash
@@ -423,11 +423,11 @@ function App() {
   }
 
   // ═══════════════════ LIKES ═══════════════════
-  const toggleLike = (key) => {
+  var toggleLike = (key) => {
     if (!account) { alert('Connectez MetaMask pour liker !'); return }
     if (!estAbonne) { alert('Abonnement requis pour liker !'); return }
-    const cur = likes[key] || { count: 0, likedBy: [] }
-    const has = cur.likedBy.includes(account)
+    var cur = likes[key] || { count: 0, likedBy: [] }
+    var has = cur.likedBy.includes(account)
     setLikes({
       ...likes,
       [key]: {
@@ -436,14 +436,14 @@ function App() {
       }
     })
   }
-  const getLike = (key) => {
-    const l = likes[key] || { count: 0, likedBy: [] }
+  var getLike = (key) => {
+    var l = likes[key] || { count: 0, likedBy: [] }
     return { count: l.count, hasLiked: l.likedBy.includes(account) }
   }
 
   // ═══════════════════ TRI ═══════════════════
-  const sortTopics = (topics, forumId) => {
-    const s = [...topics]
+  var sortTopics = (topics, forumId) => {
+    var s = [...topics]
     if (sortBy === 'popular') return s.sort((a, b) => (likes[`${forumId}-${b.id}`]?.count || 0) - (likes[`${forumId}-${a.id}`]?.count || 0))
     if (sortBy === 'replies') return s.sort((a, b) => b.replies.length - a.replies.length)
     return s.sort((a, b) => {
@@ -454,16 +454,16 @@ function App() {
   }
 
   // ═══════════════════ MESSAGERIE LOCALE ═══════════════════
-  const getConvKey = (a, b) => [a, b].sort().join('-')
+  var getConvKey = (a, b) => [a, b].sort().join('-')
 
-  const demarrerConversation = () => {
+  var demarrerConversation = () => {
     if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
-    const addr = newMessageTo.trim()
-    const key = getConvKey(shortAddr(account), addr)
-    const existing = messages.find(function(m) { return m.key === key })
+    var addr = newMessageTo.trim()
+    var key = getConvKey(shortAddr(account), addr)
+    var existing = messages.find(function(m) { return m.key === key })
     if (existing) { setActiveConversation(existing) }
     else {
-      const nc = { id: Date.now(), key, participants: [shortAddr(account), addr], msgs: [] }
+      var nc = { id: Date.now(), key, participants: [shortAddr(account), addr], msgs: [] }
       setMessages(function(prev) { return prev.concat([nc]) })
       setActiveConversation(nc)
     }
@@ -498,14 +498,14 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  const envoyerImage = (e) => {
+  var envoyerImage = (e) => {
     try {
-      const file = e.target.files[0]
+      var file = e.target.files[0]
       if (!file || !account || !estAbonne || !activeConversation) return
-      const reader = new FileReader()
+      var reader = new FileReader()
       reader.onload = (ev) => {
         try {
-          const msg = {
+          var msg = {
             id: Date.now(),
             from: shortAddr(account),
             to: activeConversation.participants.find(function(p) { return p !== shortAddr(account) }),
@@ -533,24 +533,24 @@ function App() {
     setPage('conversation')
   }
 
-  const unreadCount = account
+  var unreadCount = account
     ? messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return m.to === shortAddr(account) && !m.read }).length }, 0)
     : 0
 
    // ═══════════════════ NACL E2E ═══════════════════
-  const initNaclKeys = async () => {
+  var initNaclKeys = async () => {
     if (!account) { alert('Connectez votre wallet d\'abord !'); return }
-    const provider = walletProvider || window.ethereum
+    var provider = walletProvider || window.ethereum
     if (!provider) { alert('Provider wallet introuvable.'); return }
     setNaclLoading(true)
     try {
-      const sig = await provider.request({
+      var sig = await provider.request({
         method: 'personal_sign',
         params: ['ZoneFree messaging key', (address || account).toLowerCase()]
       })
-      const sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
-      const seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
-      const kp = nacl.box.keyPair.fromSecretKey(seed)
+      var sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
+      var seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
+      var kp = nacl.box.keyPair.fromSecretKey(seed)
       setNaclKeyPair(kp)
       localStorage.setItem(`zonefree-nacl-${account.toLowerCase()}`, JSON.stringify({
         pub: naclUtil.encodeBase64(kp.publicKey),
@@ -566,13 +566,13 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  const naclEncrypt = (text) => {
+  var naclEncrypt = (text) => {
     if (!naclKeyPair) return String(text)
     try {
-      const nonce = nacl.randomBytes(24)
-      const msgBytes = naclUtil.decodeUTF8(String(text))
-      const encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
-      const result = JSON.stringify({
+      var nonce = nacl.randomBytes(24)
+      var msgBytes = naclUtil.decodeUTF8(String(text))
+      var encrypted = nacl.secretbox(msgBytes, nonce, naclKeyPair.secretKey)
+      var result = JSON.stringify({
         e: naclUtil.encodeBase64(encrypted),
         n: naclUtil.encodeBase64(nonce)
       })
@@ -584,14 +584,14 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  const naclDecrypt = (data) => {
+  var naclDecrypt = (data) => {
     if (!data) return '...'
     if (typeof data !== 'string') return String(data)
     if (!naclKeyPair) return data
     try {
-      const parsed = JSON.parse(data)
+      var parsed = JSON.parse(data)
       if (!parsed.e || !parsed.n) return data
-      const decrypted = nacl.secretbox.open(
+      var decrypted = nacl.secretbox.open(
         naclUtil.decodeBase64(parsed.e),
         naclUtil.decodeBase64(parsed.n),
         naclKeyPair.secretKey
@@ -604,42 +604,42 @@ function App() {
   }
 
   // ═══════════════════ BLOCKCHAIN ═══════════════════
-  const fetchPrix = async (provider) => {
+  var fetchPrix = async (provider) => {
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
-      const prix = await contract.getPrixEnWei()
+      var contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
+      var prix = await contract.getPrixEnWei()
       setPrixETH(prix)
-      try { const nb = await contract.totalAbonnes(); setTotalAbonnes(Number(nb)) } catch (e) {}
-      try { const max = await contract.GRATUITS(); setMaxGratuit(Number(max)) } catch (e) {}
+      try { var nb = await contract.totalAbonnes(); setTotalAbonnes(Number(nb)) } catch (e) {}
+      try { var max = await contract.GRATUITS(); setMaxGratuit(Number(max)) } catch (e) {}
       return prix
     } catch (e) { console.error('Prix:', e); return null }
   }
 
-  const verifierAbonnement = async (addr, prov) => {
+  var verifierAbonnement = async (addr, prov) => {
     try {
-      const provider = prov || new ethers.BrowserProvider(walletProvider || window.ethereum)
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
-      const abonne = await contract.estAbonne(addr)
+      var provider = prov || new ethers.BrowserProvider(walletProvider || window.ethereum)
+      var contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
+      var abonne = await contract.estAbonne(addr)
       setEstAbonne(abonne)
-      const exp = await contract.abonnements(addr)
+      var exp = await contract.abonnements(addr)
       if (Number(exp) > 0) setExpiration(new Date(Number(exp) * 1000))
       await fetchPrix(provider)
-      const domain = await resoudreUD(addr)
+      var domain = await resoudreUD(addr)
       if (domain) setUdDomain(domain)
     } catch (e) { console.error('Abonnement:', e) }
   }
 
-  const estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
+  var estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
 
-  const sAbonner = async () => {
+  var sAbonner = async () => {
     if (!account) { alert('Connectez votre wallet !'); return }
     try {
       setLoadingAbo(true)
-      const provider = new ethers.BrowserProvider(walletProvider || window.ethereum)
-      const signer = await provider.getSigner()
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer)
-      const prixWei = estGratuit ? 0n : await contract.getPrixEnWei()
-      const tx = await contract.sAbonner({ value: prixWei })
+      var provider = new ethers.BrowserProvider(walletProvider || window.ethereum)
+      var signer = await provider.getSigner()
+      var contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, signer)
+      var prixWei = estGratuit ? 0n : await contract.getPrixEnWei()
+      var tx = await contract.sAbonner({ value: prixWei })
       await tx.wait()
       setEstAbonne(true)
       await verifierAbonnement(account)
@@ -652,20 +652,20 @@ function App() {
   }
 
   // ═══════════════════ NAVIGATION ═══════════════════
-  const openForum = (f) => { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum') }
-  const openTopic = (t) => { setActiveTopic(t); setPage('topic') }
-  const goHome = () => { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
-  const goForum = () => { setPage('forum'); setActiveTopic(null) }
-  const shortAddr = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : ''
-  const displayName = (addr) => pseudo || udDomain || shortAddr(addr)
-  const prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
+  var openForum = (f) => { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum') }
+  var openTopic = (t) => { setActiveTopic(t); setPage('topic') }
+  var goHome = () => { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
+  var goForum = () => { setPage('forum'); setActiveTopic(null) }
+  var shortAddr = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : ''
+  var displayName = (addr) => pseudo || udDomain || shortAddr(addr)
+  var prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
 
   // ═══════════════════ FORUM ACTIONS ═══════════════════
-  const creerSalon = () => {
+  var creerSalon = () => {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newSalon.name.trim()) { alert('Donnez un nom !'); return }
-    const salon = {
+    var salon = {
       id: newSalon.name.toLowerCase().replace(/\s+/g, '-'),
       emoji: newSalon.emoji || '💬', name: newSalon.name,
       description: newSalon.description || 'Nouveau salon', topics: [],
@@ -674,28 +674,28 @@ function App() {
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
   }
 
-  const creerTopic = async () => {
+  var creerTopic = async () => {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newTopic.title.trim()) { alert('Donnez un titre !'); return }
-    const topic = {
+    var topic = {
       id: Date.now(), title: newTopic.title, content: newTopic.content,
       author: displayName(account), pinned: false, replies: [],
       date: new Date().toLocaleDateString('fr-FR')
     }
-    const upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
+    var upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
-  const posterReponse = async () => {
+  var posterReponse = async () => {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newReply.trim()) { alert('Écrivez un message !'); return }
-    const reply = { id: Date.now(), author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
-    const updTopic = { ...activeTopic, replies: [...activeTopic.replies, reply] }
-    const upd = forums.map(f => f.id === activeForum.id
+    var reply = { id: Date.now(), author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
+    var updTopic = { ...activeTopic, replies: [...activeTopic.replies, reply] }
+    var upd = forums.map(f => f.id === activeForum.id
       ? { ...f, topics: f.topics.map(t => t.id === activeTopic.id ? updTopic : t) }
       : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
@@ -704,17 +704,17 @@ function App() {
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
-  const togglePin = (topicId) => {
+  var togglePin = (topicId) => {
     if (!estAbonne) return
-    const upd = forums.map(f => f.id === activeForum.id
+    var upd = forums.map(f => f.id === activeForum.id
       ? { ...f, topics: f.topics.map(t => t.id === topicId ? { ...t, pinned: !t.pinned } : t) }
       : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
   }
 
-  const supprimerSalon = (forumId) => {
+  var supprimerSalon = (forumId) => {
     if (!account || !estAbonne) return
-    const salon = forums.find(function(f) { return f.id === forumId })
+    var salon = forums.find(function(f) { return f.id === forumId })
     if (!salon) return
     if (salon.creator && salon.creator !== account) {
       alert('Vous ne pouvez supprimer que vos propres salons.')
@@ -726,11 +726,11 @@ function App() {
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
-  const joursRestants = expiration
+  var joursRestants = expiration
     ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24)))
     : 0
 
-  const inputStyle = {
+  var inputStyle = {
     display: 'block', width: '100%', padding: '10px 14px', borderRadius: 8,
     border: '1.5px solid #30363d', background: dark ? '#0d1117' : '#f8f9ff',
     color: dark ? '#e6edf3' : '#1a1a2e', fontSize: 15, marginBottom: 16,
@@ -740,16 +740,16 @@ function App() {
   var inputStyleResize = Object.assign({}, inputStyle, { resize: 'vertical' })
   var inputStyleSmall = Object.assign({}, inputStyle, { fontSize: 13 })
 
-  const topicsBase = activeForum?.topics.filter(function(t) {
+  var topicsBase = activeForum?.topics.filter(function(t) {
     return t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
       t.author.toLowerCase().includes(rechercheTopic.toLowerCase())
   }) || []
-  const topicsSorted = sortTopics(topicsBase, activeForum?.id)
-  const totalPages = Math.ceil(topicsSorted.length / TOPICS_PAR_PAGE)
+  var topicsSorted = sortTopics(topicsBase, activeForum?.id)
+  var totalPages = Math.ceil(topicsSorted.length / TOPICS_PAR_PAGE)
   var pageNums = []
   for (var pi = 1; pi <= totalPages; pi++) { pageNums.push(pi) }
-  const topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE)
-  const forumsFiltered = forums.filter(function(f) {
+  var topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE)
+  var forumsFiltered = forums.filter(function(f) {
     return f.name.toLowerCase().includes(recherche.toLowerCase()) ||
       f.description.toLowerCase().includes(recherche.toLowerCase())
   })
@@ -769,7 +769,7 @@ function App() {
 
   // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
   // eslint-disable-next-line no-unused-vars
-  const sauvegarderConvIPFS = async (convKey, msgs) => {
+  var sauvegarderConvIPFS = async (convKey, msgs) => {
     if (!everlandJWT) return
     try {
       await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
@@ -786,7 +786,7 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  const chargerConvIPFS = async (convKey) => {
+  var chargerConvIPFS = async (convKey) => {
     try {
       var cid = localStorage.getItem('zonefree-conv-cid-' + convKey)
       if (!cid) return null
