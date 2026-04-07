@@ -6,6 +6,14 @@ import naclUtil from 'tweetnacl-util'
 import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
+import Gun from 'gun/gun'
+var gun = Gun({
+  peers: [
+    'https://gun-manhattan.herokuapp.com/gun',
+    'https://gun-us.herokuapp.com/gun'
+  ]
+})
+
 var CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 var TOPICS_PAR_PAGE = 5
 var IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
@@ -213,6 +221,7 @@ function App() {
   var [showNewConversation, setShowNewConversation] = useState(false)
   // eslint-disable-next-line no-unused-vars
   var imageInputRef = useRef(null)
+  var gunSubscribed = useRef({})
 
   // ─── NACL E2E ───
   var [naclKeyPair, setNaclKeyPair] = useState(null)
@@ -302,30 +311,6 @@ function App() {
     } catch (e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, pseudo, messages])
-
-  useEffect(function() {
-    if (!activeConversation) return
-    var convRef = activeConversation
-    function refresh() {
-      chargerConvIPFS(convRef).then(function(msgs) {
-        if (msgs && msgs.length > 0) {
-          setMessages(function(prev) {
-            return prev.map(function(c) {
-              return c.key === convRef.key ? Object.assign({}, c, { msgs: msgs }) : c
-            })
-          })
-          setActiveConversation(function(prev) {
-            return (prev && prev.key === convRef.key)
-              ? Object.assign({}, prev, { msgs: msgs })
-              : prev
-          })
-        }
-      }).catch(function() {})
-    }
-    var iv = setInterval(refresh, 10000)
-    return function() { clearInterval(iv) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConversation])
 
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
@@ -550,23 +535,7 @@ function App() {
         })
       })
       setNewMessage('')
-      var convRef = activeConversation
-      sauvegarderConvIPFS(convRef.key, newMsgs).then(function() {
-        chargerConvIPFS(convRef).then(function(msgs) {
-          if (msgs && msgs.length > 0) {
-            setMessages(function(prev) {
-              return prev.map(function(c) {
-                return c.key === convRef.key ? Object.assign({}, c, { msgs: msgs }) : c
-              })
-            })
-            setActiveConversation(function(prev) {
-              return (prev && prev.key === convRef.key)
-                ? Object.assign({}, prev, { msgs: msgs })
-                : prev
-            })
-          }
-        }).catch(function() {})
-      }).catch(function() {})
+      transporterMessage(activeConversation, msg)
     } catch (err) { console.error('envoyerMessage crash:', err) }
   }
 
@@ -604,22 +573,32 @@ function App() {
   function ouvrirConversation(conv) {
     setActiveConversation(conv)
     setPage('conversation')
-    chargerConvIPFS(conv).then(function(msgs) {
-      if (msgs && msgs.length > 0) {
+    if (!conv || !conv.key) return
+    if (gunSubscribed.current[conv.key]) return
+    gunSubscribed.current[conv.key] = true
+    try {
+      gun.get('zonefree-' + conv.key).map().on(function(msg) {
+        if (!msg || !msg.id || !msg.content) return
         setMessages(function(prev) {
           return prev.map(function(c) {
-            return c.key === conv.key ? Object.assign({}, c, { msgs: msgs }) : c
+            if (c.key !== conv.key) return c
+            var existe = c.msgs && c.msgs.some(function(m) { return m.id === msg.id })
+            if (existe) return c
+            var newMsgs = (c.msgs || []).concat([msg])
+            newMsgs.sort(function(a, b) { return a.timestamp - b.timestamp })
+            return Object.assign({}, c, { msgs: newMsgs })
           })
         })
         setActiveConversation(function(prev) {
-          return (prev && prev.key === conv.key)
-            ? Object.assign({}, prev, { msgs: msgs })
-            : prev
+          if (!prev || prev.key !== conv.key) return prev
+          var existe = prev.msgs && prev.msgs.some(function(m) { return m.id === msg.id })
+          if (existe) return prev
+          var newMsgs = (prev.msgs || []).concat([msg])
+          newMsgs.sort(function(a, b) { return a.timestamp - b.timestamp })
+          return Object.assign({}, prev, { msgs: newMsgs })
         })
-      }
-    }).catch(function(err) {
-      console.warn('chargerConvIPFS failed, fallback local', err)
-    })
+      })
+    } catch (e) { console.warn('Gun subscribe error:', e) }
   }
 
   var unreadCount = account
@@ -883,43 +862,21 @@ function App() {
     } catch(e) { return c }
   }
 
-  // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
-  function sauvegarderConvIPFS(convKey, msgs) {
-    if (!everlandJWT || !convKey) return Promise.resolve()
+  // ═══════════════════ GUN P2P TRANSPORT ═══════════════════
+  function transporterMessage(conv, msg) {
     try {
-      return fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + everlandJWT },
-        body: JSON.stringify({
-          pinataContent: { convKey: convKey, msgs: msgs, updatedAt: Date.now() },
-          pinataMetadata: { name: 'ZoneFree-conv-' + convKey + '-' + Date.now() }
-        })
-      }).then(function(r) { return r.json() }).then(function(res) {
-        if (res && res.IpfsHash) localStorage.setItem('zonefree-conv-cid-' + convKey, res.IpfsHash)
-      }).catch(function(e) { console.warn('IPFS conv save error:', e) })
+      if (!conv || !conv.key || !msg || !msg.id) return
+      var flat = {
+        id: msg.id,
+        from: msg.from || '',
+        to: msg.to || '',
+        content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
+        timestamp: msg.timestamp || Date.now(),
+        type: msg.type || 'text'
+      }
+      gun.get('zonefree-' + conv.key).get(String(msg.id)).put(flat)
     } catch (e) {
-      console.warn('IPFS conv save error:', e)
-      return Promise.resolve()
-    }
-  }
-
-  function chargerConvIPFS(conv) {
-    try {
-      if (!conv || !conv.key) return Promise.resolve([])
-      var cid = localStorage.getItem('zonefree-conv-cid-' + conv.key)
-      if (!cid) return Promise.resolve([])
-      return fetch(IPFS_GATEWAY + cid).then(function(res) {
-        if (!res || !res.ok) return []
-        return res.json().then(function(data) {
-          return (data && data.msgs) ? data.msgs : []
-        }).catch(function() { return [] })
-      }).catch(function(e) {
-        console.warn('IPFS conv load error:', e)
-        return []
-      })
-    } catch (e) {
-      console.warn('IPFS conv load error:', e)
-      return Promise.resolve([])
+      console.warn('transporterMessage error:', e)
     }
   }
 

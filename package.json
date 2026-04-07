@@ -14,6 +14,7 @@
     "@web3modal/ethers": "^5.1.11",
     "@xmtp/browser-sdk": "^5.0.1",
     "ethers": "^6.16.0",
+    "gun": "^0.2020.1241",
     "lucide-react": "^0.574.0",
     "react": "^19.2.4",
     "react-app-rewired": "^2.2.1",
