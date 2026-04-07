@@ -27,8 +27,10 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "postinstall": "node -e \"const fs=require('fs');const p='node_modules/@base-org/account';fs.mkdirSync(p,{recursive:true});fs.writeFileSync(p+'/package.json',JSON.stringify({main:'index.js'}));fs.writeFileSync(p+'/index.js','module.exports={}');\""
+    "eject": "react-scripts eject"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "eslintConfig": {
     "extends": [
