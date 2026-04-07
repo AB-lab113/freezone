@@ -459,16 +459,10 @@ function App() {
       }
       var newMsgs = activeConversation.msgs.concat([msg])
       var updatedConv = Object.assign({}, activeConversation, { msgs: newMsgs })
-      setActiveConversation(updatedConv)
-      setMessages(function(prev) {
-        return prev.map(function(c) {
-          return c.key === activeConversation.key ? updatedConv : c
-        })
-      })
+      // TEST A: setActiveConversation(updatedConv)
+      // TEST B: setMessages(function(prev) { return prev.map(function(c) { return c.key === activeConversation.key ? updatedConv : c }) })
       setNewMessage('')
-    } catch (err) {
-      console.error('envoyerMessage crash:', err)
-    }
+    } catch (err) { console.error('crash:', err) }
   }
 
   // eslint-disable-next-line no-unused-vars
