@@ -291,6 +291,18 @@ function App() {
     return function() { clearInterval(iv) }
   }, [account, pseudo])
 
+  useEffect(function() {
+    if (!activeConversation) return
+    function refresh() {
+      chargerConvIPFS(activeConversation).then(function(msgs) {
+        if (msgs && msgs.length > 0) setMessages(msgs)
+      }).catch(function() {})
+    }
+    var iv = setInterval(refresh, 10000)
+    return function() { clearInterval(iv) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation])
+
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
@@ -514,6 +526,11 @@ function App() {
         })
       })
       setNewMessage('')
+      sauvegarderConvIPFS(activeConversation.key, newMsgs).then(function() {
+        chargerConvIPFS(activeConversation).then(function(msgs) {
+          if (msgs && msgs.length > 0) setMessages(msgs)
+        }).catch(function() {})
+      }).catch(function() {})
     } catch (err) { console.error('envoyerMessage crash:', err) }
   }
 
@@ -551,6 +568,13 @@ function App() {
   function ouvrirConversation(conv) {
     setActiveConversation(conv)
     setPage('conversation')
+    chargerConvIPFS(conv).then(function(msgs) {
+      if (msgs && msgs.length > 0) {
+        setMessages(msgs)
+      }
+    }).catch(function(err) {
+      console.warn('chargerConvIPFS failed, fallback local', err)
+    })
   }
 
   var unreadCount = account
@@ -815,33 +839,43 @@ function App() {
   }
 
   // ═══════════════════ IPFS CONVERSATIONS ═══════════════════
-  // eslint-disable-next-line no-unused-vars
-  var sauvegarderConvIPFS = async (convKey, msgs) => {
-    if (!everlandJWT) return
+  function sauvegarderConvIPFS(convKey, msgs) {
+    if (!everlandJWT || !convKey) return Promise.resolve()
     try {
-      await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
+      return fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + everlandJWT },
         body: JSON.stringify({
-          pinataContent: { convKey, msgs, updatedAt: Date.now() },
-          pinataMetadata: { name: `ZoneFree-conv-${convKey}-${Date.now()}` }
+          pinataContent: { convKey: convKey, msgs: msgs, updatedAt: Date.now() },
+          pinataMetadata: { name: 'ZoneFree-conv-' + convKey + '-' + Date.now() }
         })
-      }).then(r => r.json()).then(res => {
-        if (res.IpfsHash) localStorage.setItem('zonefree-conv-cid-' + convKey, res.IpfsHash)
-      })
-    } catch (e) { console.error('IPFS conv save error:', e) }
+      }).then(function(r) { return r.json() }).then(function(res) {
+        if (res && res.IpfsHash) localStorage.setItem('zonefree-conv-cid-' + convKey, res.IpfsHash)
+      }).catch(function(e) { console.warn('IPFS conv save error:', e) })
+    } catch (e) {
+      console.warn('IPFS conv save error:', e)
+      return Promise.resolve()
+    }
   }
 
-  // eslint-disable-next-line no-unused-vars
-  var chargerConvIPFS = async (convKey) => {
+  function chargerConvIPFS(conv) {
     try {
-      var cid = localStorage.getItem('zonefree-conv-cid-' + convKey)
-      if (!cid) return null
-      var res = await fetch(IPFS_GATEWAY + cid)
-      if (!res.ok) return null
-      var data = await res.json()
-      return data.msgs || null
-    } catch (e) { console.error('IPFS conv load error:', e); return null }
+      if (!conv || !conv.key) return Promise.resolve([])
+      var cid = localStorage.getItem('zonefree-conv-cid-' + conv.key)
+      if (!cid) return Promise.resolve([])
+      return fetch(IPFS_GATEWAY + cid).then(function(res) {
+        if (!res || !res.ok) return []
+        return res.json().then(function(data) {
+          return (data && data.msgs) ? data.msgs : []
+        }).catch(function() { return [] })
+      }).catch(function(e) {
+        console.warn('IPFS conv load error:', e)
+        return []
+      })
+    } catch (e) {
+      console.warn('IPFS conv load error:', e)
+      return Promise.resolve([])
+    }
   }
 
   // ═══════════════════ RENDER ═══════════════════
