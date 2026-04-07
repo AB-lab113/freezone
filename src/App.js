@@ -935,14 +935,21 @@ function App() {
         <div className="header-actions">
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? '☀️' : '🌙'}</button>
           {account && (
-            <button className="btn btn-ghost" onClick={() => setPage('messages')} style={{ position: 'relative', fontSize: 16 }}>
-              ✉️
-              {unreadCount > 0 && (
-                <span style={{ position: 'absolute', top: -4, right: -4, background: '#ef4444', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button className="btn btn-ghost" onClick={function() { setPage('messages') }} style={{ fontSize: 16 }}>
+                ✉️
+              </button>
+              {unreadCount > 0 && React.createElement('span', {
+                style: {
+                  position: 'absolute', top: '-4px', right: '-4px',
+                  background: '#ef4444', color: '#fff',
+                  borderRadius: '50%', width: '18px', height: '18px',
+                  fontSize: '11px', fontWeight: 'bold',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  pointerEvents: 'none', zIndex: 10
+                }
+              }, unreadCount > 9 ? '9+' : String(unreadCount))}
+            </div>
           )}
           <button className="btn btn-ghost" onClick={() => setPage('profil')} style={{ fontSize: 16 }}>👤</button>
           {account ? (
@@ -1052,14 +1059,13 @@ function App() {
             var autres = membres.filter(function(m) {
               return m && m.address && String(m.address).toLowerCase() !== lowerAcc
             })
-            var now = Date.now()
             return React.createElement('div', { style: { marginTop: 28 } },
               React.createElement('h3', { style: { fontSize: 16, marginBottom: 12, opacity: 0.8 } }, '👥 Membres'),
               autres.length === 0
                 ? React.createElement('div', { style: { opacity: 0.5, fontSize: 13, padding: 12 } }, 'Aucun membre connu pour le moment.')
                 : React.createElement('div', { className: 'membres-list', style: { display: 'flex', flexDirection: 'column', gap: 8 } },
                     autres.map(function(m) {
-                      var online = m.lastSeen && (now - m.lastSeen) < 5 * 60 * 1000
+                      var isOnline = m.lastSeen && (Date.now() - m.lastSeen) < 5 * 60 * 1000
                       var label = (m.pseudo && String(m.pseudo).trim()) ? m.pseudo : shortAddr(m.address)
                       return React.createElement('div', {
                         key: m.address,
@@ -1073,9 +1079,14 @@ function App() {
                         React.createElement('div', { style: { fontSize: 22 } }, m.avatar || '👤'),
                         React.createElement('div', { style: { flex: 1, fontWeight: 600 } }, label),
                         React.createElement('span', {
-                          title: online ? 'En ligne' : 'Hors ligne',
-                          style: { fontSize: 12 }
-                        }, online ? '🟢' : '⚫'),
+                          title: isOnline ? 'En ligne' : 'Hors ligne',
+                          style: {
+                            width: '12px', height: '12px', borderRadius: '50%',
+                            background: isOnline ? '#22c55e' : '#6b7280',
+                            display: 'inline-block', flexShrink: 0,
+                            boxShadow: isOnline ? '0 0 6px #22c55e' : 'none'
+                          }
+                        }),
                         React.createElement('button', {
                           className: 'btn btn-ghost',
                           style: { fontSize: 14, padding: '6px 10px' },
