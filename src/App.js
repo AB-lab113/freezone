@@ -208,7 +208,7 @@ function App() {
   useEffect(() => {
     if (isConnected && address && address !== account) {
       setAccount(address)
-      const provider = new ethers.BrowserProvider(walletProvider)
+      var provider = new ethers.BrowserProvider(walletProvider)
       verifierAbonnement(address, provider)
     }
     if (!isConnected && !address && account) {
@@ -220,7 +220,7 @@ function App() {
       window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
         if (accounts.length > 0 && !account) {
           setAccount(accounts[0])
-          const provider = new ethers.BrowserProvider(window.ethereum)
+          var provider = new ethers.BrowserProvider(window.ethereum)
           verifierAbonnement(accounts[0], provider)
         }
       }).catch(() => {})
@@ -229,10 +229,10 @@ function App() {
 
   useEffect(() => {
     if (account && !naclKeyPair && !naclLoading) {
-      const stored = localStorage.getItem(`zonefree-nacl-${account.toLowerCase()}`)
+      var stored = localStorage.getItem(`zonefree-nacl-${account.toLowerCase()}`)
       if (stored) {
         try {
-          const parsed = JSON.parse(stored)
+          var parsed = JSON.parse(stored)
           setNaclKeyPair({
             publicKey: naclUtil.decodeBase64(parsed.pub),
             secretKey: naclUtil.decodeBase64(parsed.sec)
