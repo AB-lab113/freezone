@@ -16,7 +16,6 @@
     "ethers": "^6.16.0",
     "lucide-react": "^0.574.0",
     "react": "^19.2.4",
-    "react-app-rewired": "^2.2.1",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0",
     "react-scripts": "5.0.1",
@@ -25,9 +24,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
-    "test": "react-app-rewired test",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject",
     "postinstall": "node -e \"const fs=require('fs');const p='node_modules/@base-org/account';fs.mkdirSync(p,{recursive:true});fs.writeFileSync(p+'/package.json',JSON.stringify({main:'index.js'}));fs.writeFileSync(p+'/index.js','module.exports={}');\""
   },
