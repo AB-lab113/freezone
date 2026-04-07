@@ -293,9 +293,21 @@ function App() {
 
   useEffect(function() {
     if (!activeConversation) return
+    var convRef = activeConversation
     function refresh() {
-      chargerConvIPFS(activeConversation).then(function(msgs) {
-        if (msgs && msgs.length > 0) setMessages(msgs)
+      chargerConvIPFS(convRef).then(function(msgs) {
+        if (msgs && msgs.length > 0) {
+          setMessages(function(prev) {
+            return prev.map(function(c) {
+              return c.key === convRef.key ? Object.assign({}, c, { msgs: msgs }) : c
+            })
+          })
+          setActiveConversation(function(prev) {
+            return (prev && prev.key === convRef.key)
+              ? Object.assign({}, prev, { msgs: msgs })
+              : prev
+          })
+        }
       }).catch(function() {})
     }
     var iv = setInterval(refresh, 10000)
@@ -526,9 +538,21 @@ function App() {
         })
       })
       setNewMessage('')
-      sauvegarderConvIPFS(activeConversation.key, newMsgs).then(function() {
-        chargerConvIPFS(activeConversation).then(function(msgs) {
-          if (msgs && msgs.length > 0) setMessages(msgs)
+      var convRef = activeConversation
+      sauvegarderConvIPFS(convRef.key, newMsgs).then(function() {
+        chargerConvIPFS(convRef).then(function(msgs) {
+          if (msgs && msgs.length > 0) {
+            setMessages(function(prev) {
+              return prev.map(function(c) {
+                return c.key === convRef.key ? Object.assign({}, c, { msgs: msgs }) : c
+              })
+            })
+            setActiveConversation(function(prev) {
+              return (prev && prev.key === convRef.key)
+                ? Object.assign({}, prev, { msgs: msgs })
+                : prev
+            })
+          }
         }).catch(function() {})
       }).catch(function() {})
     } catch (err) { console.error('envoyerMessage crash:', err) }
@@ -570,7 +594,16 @@ function App() {
     setPage('conversation')
     chargerConvIPFS(conv).then(function(msgs) {
       if (msgs && msgs.length > 0) {
-        setMessages(msgs)
+        setMessages(function(prev) {
+          return prev.map(function(c) {
+            return c.key === conv.key ? Object.assign({}, c, { msgs: msgs }) : c
+          })
+        })
+        setActiveConversation(function(prev) {
+          return (prev && prev.key === conv.key)
+            ? Object.assign({}, prev, { msgs: msgs })
+            : prev
+        })
       }
     }).catch(function(err) {
       console.warn('chargerConvIPFS failed, fallback local', err)
