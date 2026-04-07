@@ -432,7 +432,7 @@ function App() {
       ...likes,
       [key]: {
         count: has ? cur.count - 1 : cur.count + 1,
-        likedBy: has ? cur.likedBy.filter(a => a !== account) : [...cur.likedBy, account]
+        likedBy: has ? cur.likedBy.filter(function(a) { return a !== account }) : [...cur.likedBy, account]
       }
     })
   }
@@ -460,7 +460,7 @@ function App() {
     if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
     const addr = newMessageTo.trim()
     const key = getConvKey(shortAddr(account), addr)
-    const existing = messages.find(m => m.key === key)
+    const existing = messages.find(function(m) { return m.key === key })
     if (existing) { setActiveConversation(existing) }
     else {
       const nc = { id: Date.now(), key, participants: [shortAddr(account), addr], msgs: [] }
@@ -508,7 +508,7 @@ function App() {
           const msg = {
             id: Date.now(),
             from: shortAddr(account),
-            to: activeConversation.participants.find(p => p !== shortAddr(account)),
+            to: activeConversation.participants.find(function(p) { return p !== shortAddr(account) }),
             content: ev.target.result, type: 'image',
             date: new Date().toLocaleDateString('fr-FR'),
             timestamp: Date.now(), read: false
@@ -534,7 +534,7 @@ function App() {
   }
 
   const unreadCount = account
-    ? messages.reduce((t, c) => t + c.msgs.filter(m => m.to === shortAddr(account) && !m.read).length, 0)
+    ? messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return m.to === shortAddr(account) && !m.read }).length }, 0)
     : 0
 
    // ═══════════════════ NACL E2E ═══════════════════
@@ -684,7 +684,7 @@ function App() {
       date: new Date().toLocaleDateString('fr-FR')
     }
     const upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
-    setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
+    setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
@@ -698,7 +698,7 @@ function App() {
     const upd = forums.map(f => f.id === activeForum.id
       ? { ...f, topics: f.topics.map(t => t.id === activeTopic.id ? updTopic : t) }
       : f)
-    setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
+    setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setActiveTopic(updTopic); setNewReply('')
     envoyerNotif('💬 Nouvelle réponse', `Dans : ${activeTopic.title}`)
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
@@ -709,19 +709,19 @@ function App() {
     const upd = forums.map(f => f.id === activeForum.id
       ? { ...f, topics: f.topics.map(t => t.id === topicId ? { ...t, pinned: !t.pinned } : t) }
       : f)
-    setForums(upd); setActiveForum(upd.find(f => f.id === activeForum.id))
+    setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
   }
 
   const supprimerSalon = (forumId) => {
     if (!account || !estAbonne) return
-    const salon = forums.find(f => f.id === forumId)
+    const salon = forums.find(function(f) { return f.id === forumId })
     if (!salon) return
     if (salon.creator && salon.creator !== account) {
       alert('Vous ne pouvez supprimer que vos propres salons.')
       return
     }
     if (!window.confirm(`Supprimer le salon "${salon.name}" ?`)) return
-    setForums(forums.filter(f => f.id !== forumId))
+    setForums(forums.filter(function(f) { return f.id !== forumId }))
     if (activeForum?.id === forumId) goHome()
   }
 
@@ -740,19 +740,19 @@ function App() {
   var inputStyleResize = Object.assign({}, inputStyle, { resize: 'vertical' })
   var inputStyleSmall = Object.assign({}, inputStyle, { fontSize: 13 })
 
-  const topicsBase = activeForum?.topics.filter(t =>
-    t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
-    t.author.toLowerCase().includes(rechercheTopic.toLowerCase())
-  ) || []
+  const topicsBase = activeForum?.topics.filter(function(t) {
+    return t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
+      t.author.toLowerCase().includes(rechercheTopic.toLowerCase())
+  }) || []
   const topicsSorted = sortTopics(topicsBase, activeForum?.id)
   const totalPages = Math.ceil(topicsSorted.length / TOPICS_PAR_PAGE)
   var pageNums = []
   for (var pi = 1; pi <= totalPages; pi++) { pageNums.push(pi) }
   const topicsPaginated = topicsSorted.slice((currentPage - 1) * TOPICS_PAR_PAGE, currentPage * TOPICS_PAR_PAGE)
-  const forumsFiltered = forums.filter(f =>
-    f.name.toLowerCase().includes(recherche.toLowerCase()) ||
-    f.description.toLowerCase().includes(recherche.toLowerCase())
-  )
+  const forumsFiltered = forums.filter(function(f) {
+    return f.name.toLowerCase().includes(recherche.toLowerCase()) ||
+      f.description.toLowerCase().includes(recherche.toLowerCase())
+  })
 
   // ═══════════════════ HELPERS RENDER ═══════════════════
   // eslint-disable-next-line no-unused-vars
@@ -1074,9 +1074,9 @@ function App() {
             <h3 style={{ marginBottom: 20 }}>📊 Mes statistiques</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
               {[
-                { label: 'Topics créés', value: forums.reduce((a, f) => a + f.topics.filter(t => t.author === displayName(account)).length, 0), icon: '📝' },
-                { label: 'Réponses', value: forums.reduce((a, f) => a + f.topics.reduce((b, t) => b + t.replies.filter(r => r.author === displayName(account)).length, 0), 0), icon: '💬' },
-                { label: 'Messages', value: messages.reduce((a, c) => a + c.msgs.filter(m => m.from === shortAddr(account)).length, 0), icon: '✉️' }
+                { label: 'Topics créés', value: forums.reduce(function(a, f) { return a + f.topics.filter(function(t) { return t.author === displayName(account) }).length }, 0), icon: '📝' },
+                { label: 'Réponses', value: forums.reduce(function(a, f) { return a + f.topics.reduce(function(b, t) { return b + t.replies.filter(function(r) { return r.author === displayName(account) }).length }, 0) }, 0), icon: '💬' },
+                { label: 'Messages', value: messages.reduce(function(a, c) { return a + c.msgs.filter(function(m) { return m.from === shortAddr(account) }).length }, 0), icon: '✉️' }
               ].map(function(stat, i) { return (
                 <div key={i} style={{ borderRadius: 12, padding: 20, textAlign: 'center', background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
