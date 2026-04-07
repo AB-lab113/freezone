@@ -967,7 +967,7 @@ function App() {
 
   function chargerMembresIPFS() {
     try {
-      var cid = localStorage.getItem('zonefree-registre-cid')
+      var cid = localStorage.getItem('zonefree-registre-cid') || 'bafkreihdwdcefgh4d6humlar6gl5xdvkmqbh7bqq7mnfvmk7ds7wzgknoe'
       if (!cid) return Promise.resolve([])
       return fetch('https://ipfs.io/ipfs/' + cid).then(function(res) {
         if (!res || !res.ok) return []
@@ -1220,36 +1220,53 @@ function App() {
             })}
           </div>
           {React.createElement('div', {
-            style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', width: '100%', boxSizing: 'border-box', marginTop: 12 }
+            style: {
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '12px 16px', width: '100%', boxSizing: 'border-box',
+              borderTop: '1px solid #333', background: '#111'
+            }
           },
             React.createElement('input', {
+              type: 'file', accept: 'image/*',
               id: 'inputImageMsg',
-              type: 'file',
-              accept: 'image/*',
               style: { display: 'none' },
-              onChange: function(e) { envoyerImage(e) }
+              onChange: function(e) {
+                if (e.target.files && e.target.files[0]) {
+                  envoyerImage(e)
+                }
+              }
             }),
             React.createElement('button', {
-              type: 'button',
               onClick: function() {
                 var el = document.getElementById('inputImageMsg')
                 if (el) el.click()
               },
-              style: { fontSize: '20px', padding: '8px 12px', cursor: 'pointer' },
-              title: 'Envoyer une image'
+              style: {
+                background: 'none', border: '1px solid #555', borderRadius: '8px',
+                color: '#fff', fontSize: '20px', cursor: 'pointer',
+                padding: '6px 10px', flexShrink: '0'
+              }
             }, '🖼️'),
             React.createElement('input', {
-              className: 'msg-input',
-              placeholder: 'Écrire un message... (Entrée pour envoyer)',
+              type: 'text',
+              placeholder: 'Écrire un message... (Entrée)',
               value: newMessage,
               onChange: function(e) { setNewMessage(e.target.value) },
-              onKeyDown: function(e) { if (e.key === 'Enter') { e.preventDefault(); envoyerMessage() } },
-              style: { width: '100%', minHeight: '44px', fontSize: '16px', padding: '10px 12px', boxSizing: 'border-box', flex: 1 }
+              onKeyDown: function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); envoyerMessage() } },
+              style: {
+                flex: '1', minHeight: '44px', fontSize: '16px',
+                padding: '10px 14px', boxSizing: 'border-box',
+                borderRadius: '10px', border: '1px solid #444',
+                background: '#222', color: '#fff', outline: 'none'
+              }
             }),
             React.createElement('button', {
-              type: 'button',
-              onClick: envoyerMessage,
-              style: { fontSize: '18px', padding: '10px 14px', cursor: 'pointer' }
+              onClick: function() { envoyerMessage() },
+              style: {
+                background: '#6c47ff', border: 'none', borderRadius: '8px',
+                color: '#fff', fontSize: '18px', cursor: 'pointer',
+                padding: '8px 14px', flexShrink: '0'
+              }
             }, '➤')
           )}
         </div>
