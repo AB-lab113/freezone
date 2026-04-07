@@ -276,35 +276,32 @@ function App() {
 
   useEffect(function() {
     if (!account) return
-    function touchLastSeen() {
-      try {
-        var membres = JSON.parse(localStorage.getItem('freezone-membres') || '[]')
-        var lower = String(account).toLowerCase()
-        var idx = membres.findIndex(function(m) { return m && m.address && String(m.address).toLowerCase() === lower })
-        if (idx >= 0) {
-          membres[idx].lastSeen = Date.now()
-        } else {
-          membres.push({ address: account, pseudo: pseudo || '', avatar: '', lastSeen: Date.now() })
+    try {
+      var moi = shortAddr(account)
+      var seen = {}
+      var liste = []
+      for (var i = 0; i < messages.length; i++) {
+        var conv = messages[i]
+        if (!conv || !conv.participants) continue
+        var other = null
+        for (var j = 0; j < conv.participants.length; j++) {
+          if (conv.participants[j] !== moi) { other = conv.participants[j]; break }
         }
-        localStorage.setItem('freezone-membres', JSON.stringify(membres))
-        setMembresListe(membres)
-      } catch (e) {}
-      try { publierPresenceIPFS() } catch (e) {}
-    }
-    touchLastSeen()
-    var iv = setInterval(touchLastSeen, 60000)
-    return function() { clearInterval(iv) }
+        if (!other) continue
+        var k = String(other).toLowerCase()
+        if (seen[k]) continue
+        seen[k] = true
+        liste.push(Object.assign({}, {
+          address: other,
+          pseudo: getPseudoOrAddr(other),
+          lastSeen: 0,
+          avatar: ''
+        }))
+      }
+      setMembresListe(liste)
+    } catch (e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account, pseudo])
-
-  useEffect(function() {
-    try { chargerMembresIPFS() } catch (e) {}
-    var iv = setInterval(function() {
-      try { chargerMembresIPFS() } catch (e) {}
-    }, 30000)
-    return function() { clearInterval(iv) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [account, pseudo, messages])
 
   useEffect(function() {
     if (!activeConversation) return
@@ -922,88 +919,6 @@ function App() {
       })
     } catch (e) {
       console.warn('IPFS conv load error:', e)
-      return Promise.resolve([])
-    }
-  }
-
-  // ═══════════════════ REGISTRE MEMBRES IPFS ═══════════════════
-  function publierPresenceIPFS() {
-    try {
-      if (!account || !everlandJWT) return Promise.resolve()
-      var membres = []
-      try { membres = JSON.parse(localStorage.getItem('freezone-membres') || '[]') } catch (e) { membres = [] }
-      var lower = String(account).toLowerCase()
-      var idx = -1
-      for (var i = 0; i < membres.length; i++) {
-        if (membres[i] && membres[i].address && String(membres[i].address).toLowerCase() === lower) { idx = i; break }
-      }
-      var now = Date.now()
-      if (idx >= 0) {
-        membres[idx] = Object.assign({}, membres[idx], {
-          address: account,
-          pseudo: pseudo || membres[idx].pseudo || '',
-          avatar: membres[idx].avatar || '',
-          lastSeen: now
-        })
-      } else {
-        membres = membres.concat([{ address: account, pseudo: pseudo || '', avatar: '', lastSeen: now }])
-      }
-      localStorage.setItem('freezone-membres', JSON.stringify(membres))
-      return fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + everlandJWT },
-        body: JSON.stringify({
-          pinataContent: { membres: membres, updatedAt: now },
-          pinataMetadata: { name: 'ZoneFree-registre-' + now }
-        })
-      }).then(function(r) { return r.json() }).then(function(res) {
-        if (res && res.IpfsHash) localStorage.setItem('zonefree-registre-cid', res.IpfsHash)
-      }).catch(function(e) { console.warn('publierPresenceIPFS error:', e) })
-    } catch (e) {
-      console.warn('publierPresenceIPFS error:', e)
-      return Promise.resolve()
-    }
-  }
-
-  function chargerMembresIPFS() {
-    try {
-      var cid = localStorage.getItem('zonefree-registre-cid') || 'bafkreihdwdcefgh4d6humlar6gl5xdvkmqbh7bqq7mnfvmk7ds7wzgknoe'
-      if (!cid) return Promise.resolve([])
-      return fetch('https://ipfs.io/ipfs/' + cid).then(function(res) {
-        if (!res || !res.ok) return []
-        return res.json().then(function(data) {
-          var distants = (data && data.membres) ? data.membres : (Array.isArray(data) ? data : [])
-          var locaux = []
-          try { locaux = JSON.parse(localStorage.getItem('freezone-membres') || '[]') } catch (e) { locaux = [] }
-          var byAddr = {}
-          for (var i = 0; i < locaux.length; i++) {
-            var lm = locaux[i]
-            if (lm && lm.address) byAddr[String(lm.address).toLowerCase()] = lm
-          }
-          for (var j = 0; j < distants.length; j++) {
-            var dm = distants[j]
-            if (!dm || !dm.address) continue
-            var k = String(dm.address).toLowerCase()
-            var existing = byAddr[k]
-            if (!existing) {
-              byAddr[k] = dm
-            } else {
-              var newer = (dm.lastSeen || 0) > (existing.lastSeen || 0) ? dm : existing
-              byAddr[k] = Object.assign({}, existing, newer)
-            }
-          }
-          var merged = []
-          for (var key in byAddr) { if (Object.prototype.hasOwnProperty.call(byAddr, key)) merged.push(byAddr[key]) }
-          localStorage.setItem('freezone-membres', JSON.stringify(merged))
-          setMembresListe(merged)
-          return merged
-        }).catch(function() { return [] })
-      }).catch(function(e) {
-        console.warn('chargerMembresIPFS error:', e)
-        return []
-      })
-    } catch (e) {
-      console.warn('chargerMembresIPFS error:', e)
       return Promise.resolve([])
     }
   }
