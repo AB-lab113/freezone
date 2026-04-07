@@ -113,6 +113,34 @@ class MessagerieErrorBoundary extends React.Component {
   }
 }
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(err) {
+    return { error: err }
+  }
+  render() {
+    if (this.state.error) {
+      return React.createElement('div', {
+        style: { position:'fixed', top:0, left:0, right:0, bottom:0,
+                 background:'#1a0000', color:'#ff6b6b', padding:20,
+                 fontFamily:'monospace', fontSize:12, overflow:'auto', zIndex:99999 }
+      },
+        React.createElement('h2', null, '🔴 CRASH DÉTECTÉ'),
+        React.createElement('pre', null, this.state.error && this.state.error.toString()),
+        React.createElement('pre', null, this.state.error && this.state.error.stack),
+        React.createElement('button', {
+          onClick: function() { window.location.reload() },
+          style: { marginTop:20, padding:'10px 20px', cursor:'pointer' }
+        }, 'Recharger')
+      )
+    }
+    return this.props.children
+  }
+}
+
 function App() {
   // ─── REOWN APPKIT HOOKS ───
   const { open: openModal } = useAppKit()
@@ -1401,4 +1429,5 @@ function App() {
   )
 }
 
+export { AppErrorBoundary }
 export default App
