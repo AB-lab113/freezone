@@ -271,6 +271,26 @@ function App() {
   }, [account])
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  useEffect(function() {
+    if (!account) return
+    function touchLastSeen() {
+      try {
+        var membres = JSON.parse(localStorage.getItem('freezone-membres') || '[]')
+        var lower = String(account).toLowerCase()
+        var idx = membres.findIndex(function(m) { return m && m.address && String(m.address).toLowerCase() === lower })
+        if (idx >= 0) {
+          membres[idx].lastSeen = Date.now()
+        } else {
+          membres.push({ address: account, pseudo: pseudo || '', avatar: '', lastSeen: Date.now() })
+        }
+        localStorage.setItem('freezone-membres', JSON.stringify(membres))
+      } catch (e) {}
+    }
+    touchLastSeen()
+    var iv = setInterval(touchLastSeen, 60000)
+    return function() { clearInterval(iv) }
+  }, [account, pseudo])
+
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
@@ -658,6 +678,33 @@ function App() {
   var goForum = () => { setPage('forum'); setActiveTopic(null) }
   function shortAddr(addr) { return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '' }
   function displayName(addr) { return pseudo || udDomain || shortAddr(addr) }
+  function getPseudoOrAddr(address) {
+    if (!address) return ''
+    try {
+      var membres = JSON.parse(localStorage.getItem('freezone-membres') || '[]')
+      var lower = String(address).toLowerCase()
+      var found = membres.find(function(m) {
+        if (!m || !m.address) return false
+        var a = String(m.address).toLowerCase()
+        return a === lower || a === lower.replace(/\.\.\..*/, '') || lower.indexOf(a.slice(0, 6)) === 0
+      })
+      if (found && found.pseudo && String(found.pseudo).trim()) return found.pseudo
+    } catch (e) {}
+    return shortAddr(address)
+  }
+  function demarrerConversationAvec(addr) {
+    if (!addr) return
+    var key = getConvKey(shortAddr(account), addr)
+    var existing = messages.find(function(m) { return m.key === key })
+    if (existing) {
+      setActiveConversation(existing)
+    } else {
+      var nc = { id: Date.now(), key: key, participants: [shortAddr(account), addr], msgs: [] }
+      setMessages(function(prev) { return prev.concat([nc]) })
+      setActiveConversation(nc)
+    }
+    setPage('conversation')
+  }
   var prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
 
   // ═══════════════════ FORUM ACTIONS ═══════════════════
@@ -912,13 +959,55 @@ function App() {
                   },
                     React.createElement('div', {className: 'conv-avatar'}, '🔐'),
                     React.createElement('div', {className: 'conv-info'},
-                      React.createElement('div', {className: 'conv-name'}, other),
+                      React.createElement('div', {className: 'conv-name'}, getPseudoOrAddr(other)),
                       React.createElement('div', {className: 'conv-preview'}, preview)
                     )
                   )
                 })}
               </div>
           }
+
+          {(function() {
+            var membres = []
+            try { membres = JSON.parse(localStorage.getItem('freezone-membres') || '[]') } catch (e) {}
+            var lowerAcc = String(account || '').toLowerCase()
+            var autres = membres.filter(function(m) {
+              return m && m.address && String(m.address).toLowerCase() !== lowerAcc
+            })
+            var now = Date.now()
+            return React.createElement('div', { style: { marginTop: 28 } },
+              React.createElement('h3', { style: { fontSize: 16, marginBottom: 12, opacity: 0.8 } }, '👥 Membres'),
+              autres.length === 0
+                ? React.createElement('div', { style: { opacity: 0.5, fontSize: 13, padding: 12 } }, 'Aucun membre connu pour le moment.')
+                : React.createElement('div', { className: 'membres-list', style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+                    autres.map(function(m) {
+                      var online = m.lastSeen && (now - m.lastSeen) < 5 * 60 * 1000
+                      var label = (m.pseudo && String(m.pseudo).trim()) ? m.pseudo : shortAddr(m.address)
+                      return React.createElement('div', {
+                        key: m.address,
+                        style: {
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                          background: dark ? '#0d1117' : '#f8f9ff',
+                          border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0',
+                          borderRadius: 10
+                        }
+                      },
+                        React.createElement('div', { style: { fontSize: 22 } }, m.avatar || '👤'),
+                        React.createElement('div', { style: { flex: 1, fontWeight: 600 } }, label),
+                        React.createElement('span', {
+                          title: online ? 'En ligne' : 'Hors ligne',
+                          style: { fontSize: 12 }
+                        }, online ? '🟢' : '⚫'),
+                        React.createElement('button', {
+                          className: 'btn btn-ghost',
+                          style: { fontSize: 14, padding: '6px 10px' },
+                          onClick: function() { demarrerConversationAvec(m.address) }
+                        }, '💬')
+                      )
+                    })
+                  )
+            )
+          })()}
 
           {showNewConversation && (
             <div style={{ position: 'fixed', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
@@ -942,7 +1031,7 @@ function App() {
       {page === 'conversation' && activeConversation && (
         <div className="forum-page">
           <button onClick={function() { setPage('messages') }}>← Retour</button>
-          <h2>💬 {activeConversation.participants[1] || activeConversation.participants[0]}</h2>
+          <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return p !== shortAddr(account) }) || activeConversation.participants[0])}</h2>
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
               <div style={{textAlign:'center', opacity:0.4, marginTop:40}}>Aucun message — Dites bonjour ! 👋</div>
