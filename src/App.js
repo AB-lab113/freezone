@@ -60,7 +60,7 @@ var FORUMS_INIT = [
 ]
 
 // ─── MIGRATION PSEUDO ───
-var getPseudoFromStorage = () => {
+function getPseudoFromStorage() {
   // 1. Cherche d'abord dans la nouvelle clé
   var stored = localStorage.getItem('zonefree-pseudo') || ''
 
@@ -656,8 +656,8 @@ function App() {
   var openTopic = (t) => { setActiveTopic(t); setPage('topic') }
   var goHome = () => { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
   var goForum = () => { setPage('forum'); setActiveTopic(null) }
-  var shortAddr = (addr) => addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : ''
-  var displayName = (addr) => pseudo || udDomain || shortAddr(addr)
+  function shortAddr(addr) { return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '' }
+  function displayName(addr) { return pseudo || udDomain || shortAddr(addr) }
   var prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
 
   // ═══════════════════ FORUM ACTIONS ═══════════════════
