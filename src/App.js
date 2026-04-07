@@ -287,30 +287,73 @@ function App() {
     if (!account) return
     try {
       var moi = shortAddr(account)
-      var seen = {}
-      var liste = []
-      for (var i = 0; i < messages.length; i++) {
-        var conv = messages[i]
-        if (!conv || !conv.participants) continue
-        var other = null
-        for (var j = 0; j < conv.participants.length; j++) {
-          if (conv.participants[j] !== moi) { other = conv.participants[j]; break }
+      setMembresListe(function(prev) {
+        var byAddr = {}
+        for (var k = 0; k < prev.length; k++) {
+          if (prev[k] && prev[k].address) byAddr[String(prev[k].address).toLowerCase()] = prev[k]
         }
-        if (!other) continue
-        var k = String(other).toLowerCase()
-        if (seen[k]) continue
-        seen[k] = true
-        liste.push(Object.assign({}, {
-          address: other,
-          pseudo: getPseudoOrAddr(other),
-          lastSeen: 0,
-          avatar: ''
-        }))
-      }
-      setMembresListe(liste)
+        for (var i = 0; i < messages.length; i++) {
+          var conv = messages[i]
+          if (!conv || !conv.participants) continue
+          var other = null
+          for (var j = 0; j < conv.participants.length; j++) {
+            if (conv.participants[j] !== moi) { other = conv.participants[j]; break }
+          }
+          if (!other) continue
+          var key = String(other).toLowerCase()
+          if (!byAddr[key]) {
+            byAddr[key] = { address: other, pseudo: getPseudoOrAddr(other), lastSeen: 0, avatar: '' }
+          }
+        }
+        var out = []
+        for (var kk in byAddr) { if (Object.prototype.hasOwnProperty.call(byAddr, kk)) out.push(byAddr[kk]) }
+        return out
+      })
     } catch (e) {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, pseudo, messages])
+
+  useEffect(function() {
+    if (!account) return
+    function publishPresence() {
+      try {
+        gun.get('zonefree-presence').get(String(account).toLowerCase()).put({
+          address: String(account).toLowerCase(),
+          pseudo: pseudo || '',
+          lastSeen: Date.now()
+        })
+      } catch (e) { console.warn('publishPresence error:', e) }
+    }
+    publishPresence()
+    var iv = setInterval(publishPresence, 30000)
+    return function() { clearInterval(iv) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, pseudo])
+
+  useEffect(function() {
+    try {
+      gun.get('zonefree-presence').map().on(function(membre) {
+        if (!membre || !membre.address) return
+        setMembresListe(function(prev) {
+          var existe = prev.some(function(m) { return m.address === membre.address })
+          if (existe) {
+            return prev.map(function(m) {
+              return m.address === membre.address
+                ? Object.assign({}, m, { pseudo: membre.pseudo, lastSeen: membre.lastSeen })
+                : m
+            })
+          }
+          return prev.concat([{
+            address: membre.address,
+            pseudo: membre.pseudo || (String(membre.address).substring(0, 6) + '...'),
+            lastSeen: membre.lastSeen || 0,
+            avatar: ''
+          }])
+        })
+      })
+    } catch (e) { console.warn('Gun presence subscribe error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
