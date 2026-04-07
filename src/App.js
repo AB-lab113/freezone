@@ -1219,16 +1219,39 @@ function App() {
               )
             })}
           </div>
-          <div style={{display:'flex', gap:8, marginTop:12}}>
-            <input
-              className="msg-input"
-              placeholder="Écrire un message... (Entrée pour envoyer)"
-              value={newMessage}
-              onChange={function(e) { setNewMessage(e.target.value) }}
-              onKeyDown={function(e) { if (e.key === 'Enter') { e.preventDefault(); envoyerMessage() } }}
-            />
-            <button onClick={envoyerMessage}>➤</button>
-          </div>
+          {React.createElement('div', {
+            style: { display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', width: '100%', boxSizing: 'border-box', marginTop: 12 }
+          },
+            React.createElement('input', {
+              id: 'inputImageMsg',
+              type: 'file',
+              accept: 'image/*',
+              style: { display: 'none' },
+              onChange: function(e) { envoyerImage(e) }
+            }),
+            React.createElement('button', {
+              type: 'button',
+              onClick: function() {
+                var el = document.getElementById('inputImageMsg')
+                if (el) el.click()
+              },
+              style: { fontSize: '20px', padding: '8px 12px', cursor: 'pointer' },
+              title: 'Envoyer une image'
+            }, '🖼️'),
+            React.createElement('input', {
+              className: 'msg-input',
+              placeholder: 'Écrire un message... (Entrée pour envoyer)',
+              value: newMessage,
+              onChange: function(e) { setNewMessage(e.target.value) },
+              onKeyDown: function(e) { if (e.key === 'Enter') { e.preventDefault(); envoyerMessage() } },
+              style: { width: '100%', minHeight: '44px', fontSize: '16px', padding: '10px 12px', boxSizing: 'border-box', flex: 1 }
+            }),
+            React.createElement('button', {
+              type: 'button',
+              onClick: envoyerMessage,
+              style: { fontSize: '18px', padding: '10px 14px', cursor: 'pointer' }
+            }, '➤')
+          )}
         </div>
       )}
 
