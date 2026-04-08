@@ -276,9 +276,53 @@ function App() {
             publicKey: naclUtil.decodeBase64(parsed.pub),
             secretKey: naclUtil.decodeBase64(parsed.sec)
           })
+          try {
+            gun.get('zonefree-nacl-keys').get(String(account).toLowerCase()).put({
+              address: String(account).toLowerCase(),
+              pubKey: parsed.pub
+            })
+          } catch (e) { console.warn('publish nacl pub error:', e) }
         } catch (e) { console.warn('NaCl: clé locale corrompue') }
       }
     }
+  }, [account])
+
+  useEffect(function() {
+    if (!account) return
+    try {
+      setMessages(function(prev) {
+        var byKey = {}
+        for (var i = 0; i < prev.length; i++) {
+          var c = prev[i]
+          if (!c) continue
+          var k = String(c.key || '').toLowerCase()
+          if (!byKey[k]) {
+            byKey[k] = Object.assign({}, c, { key: k, msgs: (c.msgs || []).slice() })
+          } else {
+            var existing = byKey[k]
+            var seenIds = {}
+            for (var m = 0; m < existing.msgs.length; m++) {
+              if (existing.msgs[m] && existing.msgs[m].id != null) seenIds[existing.msgs[m].id] = true
+            }
+            var add = []
+            var src = c.msgs || []
+            for (var n = 0; n < src.length; n++) {
+              var msg = src[n]
+              if (!msg || msg.id == null) continue
+              if (seenIds[msg.id]) continue
+              seenIds[msg.id] = true
+              add.push(msg)
+            }
+            byKey[k] = Object.assign({}, existing, { msgs: existing.msgs.concat(add) })
+          }
+        }
+        var out = []
+        for (var kk in byKey) { if (Object.prototype.hasOwnProperty.call(byKey, kk)) out.push(byKey[kk]) }
+        try { localStorage.setItem('zonefree-messages', JSON.stringify(out)) } catch (e) {}
+        return out
+      })
+    } catch (e) { console.warn('merge dup convs error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account])
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -569,10 +613,24 @@ function App() {
     }
     try {
       var content = newMessage
+      var otherAddress = activeConversation.participants.find(function(p) { return p !== shortAddr(account) })
+      var otherKey = String(otherAddress || '').toLowerCase()
+      if (otherKey) {
+        var cachedPub = localStorage.getItem('zonefree-nacl-pub-' + otherKey)
+        if (!cachedPub) {
+          try {
+            gun.get('zonefree-nacl-keys').get(otherKey).once(function(data) {
+              if (data && data.pubKey) {
+                localStorage.setItem('zonefree-nacl-pub-' + otherKey, data.pubKey)
+              }
+            })
+          } catch (e) { console.warn('lookup nacl pub error:', e) }
+        }
+      }
       var msg = {
         id: Date.now(),
         from: shortAddr(account),
-        to: activeConversation.participants.find(function(p) { return p !== shortAddr(account) }),
+        to: otherAddress,
         content: content,
         type: 'text',
         encrypted: false,
@@ -674,10 +732,17 @@ function App() {
       var seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
       var kp = nacl.box.keyPair.fromSecretKey(seed)
       setNaclKeyPair(kp)
+      var pubB64 = naclUtil.encodeBase64(kp.publicKey)
       localStorage.setItem(`zonefree-nacl-${account.toLowerCase()}`, JSON.stringify({
-        pub: naclUtil.encodeBase64(kp.publicKey),
+        pub: pubB64,
         sec: naclUtil.encodeBase64(kp.secretKey)
       }))
+      try {
+        gun.get('zonefree-nacl-keys').get(String(account).toLowerCase()).put({
+          address: String(account).toLowerCase(),
+          pubKey: pubB64
+        })
+      } catch (e) { console.warn('publish nacl pub error:', e) }
       envoyerNotif('🔐 NaCl E2E actif', 'Chiffrement Curve25519 activé !')
     } catch (e) {
       console.error('NaCl init error:', e)
