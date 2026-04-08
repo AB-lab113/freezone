@@ -9,10 +9,7 @@ import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@
 import Gun from 'gun/gun'
 var gun = Gun({
   peers: [
-    'https://gun-manhattan.herokuapp.com/gun',
-    'https://gun-us.herokuapp.com/gun',
-    'https://gundb-relay-mlb.glitch.me/gun',
-    'https://gun-relay.c2fo.com/gun'
+    'https://gun-relay-production-974a.up.railway.app/gun'
   ]
 })
 
