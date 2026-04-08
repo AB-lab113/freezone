@@ -298,9 +298,37 @@ function App() {
     if (!account) return
     try {
       setMessages(function(prev) {
+        var accLow = String(account).toLowerCase()
+        function isFullAddr(s) {
+          return typeof s === 'string' && s.length === 42 && s.indexOf('0x') === 0
+        }
+        function normalizeConv(c) {
+          if (!c || !c.participants) return c
+          var newParts = []
+          var changed = false
+          for (var p = 0; p < c.participants.length; p++) {
+            var part = c.participants[p]
+            var partStr = String(part || '')
+            if (isMe(part)) {
+              if (partStr.toLowerCase() !== accLow) changed = true
+              newParts.push(accLow)
+            } else if (isFullAddr(partStr)) {
+              if (partStr !== partStr.toLowerCase()) changed = true
+              newParts.push(partStr.toLowerCase())
+            } else {
+              newParts.push(part)
+            }
+          }
+          var canRebuild = newParts.length === 2 && isFullAddr(newParts[0]) && isFullAddr(newParts[1])
+          if (changed || canRebuild) {
+            var newKey = canRebuild ? getConvKey(newParts[0], newParts[1]) : String(c.key || '').toLowerCase()
+            return Object.assign({}, c, { participants: newParts, key: newKey })
+          }
+          return Object.assign({}, c, { key: String(c.key || '').toLowerCase() })
+        }
         var byKey = {}
         for (var i = 0; i < prev.length; i++) {
-          var c = prev[i]
+          var c = normalizeConv(prev[i])
           if (!c) continue
           var k = String(c.key || '').toLowerCase()
           if (!byKey[k]) {
@@ -597,14 +625,26 @@ function App() {
     return [aLow, bLow].sort().join('-')
   }
 
+  function isMe(p) {
+    if (!p || !account) return false
+    var pLow = String(p).toLowerCase()
+    var accLow = String(account).toLowerCase()
+    if (pLow === accLow) return true
+    var sa = shortAddr(account)
+    if (p === sa) return true
+    if (pLow === String(sa).toLowerCase()) return true
+    return false
+  }
+
   var demarrerConversation = () => {
     if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
-    var addr = newMessageTo.trim()
-    var key = getConvKey(shortAddr(account), addr)
+    var addrLow = String(newMessageTo.trim()).toLowerCase()
+    var accLow = String(account).toLowerCase()
+    var key = getConvKey(accLow, addrLow)
     var existing = messages.find(function(m) { return m.key === key })
     if (existing) { setActiveConversation(existing) }
     else {
-      var nc = { id: Date.now(), key, participants: [shortAddr(account), addr], msgs: [] }
+      var nc = { id: Date.now(), key: key, participants: [accLow, addrLow], msgs: [] }
       setMessages(function(prev) { return prev.concat([nc]) })
       setActiveConversation(nc)
     }
@@ -621,7 +661,7 @@ function App() {
     }
     try {
       var contenu = newMessage
-      var otherAddress = activeConversation.participants.find(function(p) { return p !== shortAddr(account) })
+      var otherAddress = activeConversation.participants.find(function(p) { return !isMe(p) })
       var otherAddr = String(otherAddress || '').toLowerCase()
       var recipientPubKeyB64 = localStorage.getItem('zonefree-nacl-pub-' + otherAddr)
       if (!recipientPubKeyB64) {
@@ -680,7 +720,7 @@ function App() {
           var msg = {
             id: Date.now(),
             from: shortAddr(account),
-            to: activeConversation.participants.find(function(p) { return p !== shortAddr(account) }),
+            to: activeConversation.participants.find(function(p) { return !isMe(p) }),
             content: ev.target.result, type: 'image',
             date: new Date().toLocaleDateString('fr-FR'),
             timestamp: Date.now(), read: false
@@ -732,7 +772,7 @@ function App() {
   }
 
   var unreadCount = account
-    ? messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return m.to === shortAddr(account) && !m.read }).length }, 0)
+    ? messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return isMe(m.to) && !m.read }).length }, 0)
     : 0
 
    // ═══════════════════ NACL E2E ═══════════════════
@@ -884,12 +924,14 @@ function App() {
   }
   function demarrerConversationAvec(addr) {
     if (!addr) return
-    var key = getConvKey(shortAddr(account), addr)
+    var addrLow = String(addr).toLowerCase()
+    var accLow = String(account).toLowerCase()
+    var key = getConvKey(accLow, addrLow)
     var existing = messages.find(function(m) { return m.key === key })
     if (existing) {
       setActiveConversation(existing)
     } else {
-      var nc = { id: Date.now(), key: key, participants: [shortAddr(account), addr], msgs: [] }
+      var nc = { id: Date.now(), key: key, participants: [accLow, addrLow], msgs: [] }
       setMessages(function(prev) { return prev.concat([nc]) })
       setActiveConversation(nc)
     }
@@ -1125,7 +1167,7 @@ function App() {
               </div>
             : <div className="messages-list">
                 {messages.map(function(conv) {
-                  var other = conv.participants.find(function(p) { return p !== shortAddr(account) }) || conv.participants[0]
+                  var other = conv.participants.find(function(p) { return !isMe(p) }) || conv.participants[0]
                   var lastMsg = conv.msgs && conv.msgs.length > 0 ? conv.msgs[conv.msgs.length - 1] : null
                   var preview = ''
                   if (lastMsg && lastMsg.content) {
@@ -1223,13 +1265,13 @@ function App() {
       {page === 'conversation' && activeConversation && (
         <div className="forum-page">
           <button onClick={function() { setPage('messages') }}>← Retour</button>
-          <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return p !== shortAddr(account) }) || activeConversation.participants[0])}</h2>
+          <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return !isMe(p) }) || activeConversation.participants[0])}</h2>
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
               <div style={{textAlign:'center', opacity:0.4, marginTop:40}}>Aucun message — Dites bonjour ! 👋</div>
             )}
             {activeConversation.msgs.map(function(m) {
-              var estMoi = m.from === shortAddr(account)
+              var estMoi = isMe(m.from) || (m.fromAddr && String(m.fromAddr).toLowerCase() === String(account || '').toLowerCase())
               var contenu = ''
               if (m && m.content) {
                 if (typeof m.content === 'string') {
