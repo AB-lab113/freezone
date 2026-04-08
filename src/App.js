@@ -625,6 +625,19 @@ function App() {
     return [aLow, bLow].sort().join('-')
   }
 
+  function hashConvKey(key) {
+    var k = String(key || '')
+    var hash = 0
+    for (var i = 0; i < k.length; i++) {
+      var c = k.charCodeAt(i)
+      hash = ((hash << 5) - hash) + c
+      hash = hash & hash
+    }
+    var h = Math.abs(hash).toString(36)
+    var short = k.replace('0x', '').replace(/-/g, '').substring(0, 8) + h + k.slice(-8).replace('0x', '')
+    return 'zf-' + short
+  }
+
   function isMe(p) {
     if (!p || !account) return false
     var pLow = String(p).toLowerCase()
@@ -747,7 +760,7 @@ function App() {
     if (gunSubscribed.current[conv.key]) return
     gunSubscribed.current[conv.key] = true
     try {
-      gun.get('zonefree-' + conv.key).map().on(function(msg) {
+      gun.get(hashConvKey(conv.key)).map().on(function(msg) {
         if (!msg || !msg.id || !msg.content) return
         setMessages(function(prev) {
           return prev.map(function(c) {
@@ -1058,7 +1071,7 @@ function App() {
         timestamp: msg.timestamp || Date.now(),
         type: msg.type || 'text'
       }
-      gun.get('zonefree-' + conv.key).get(String(msg.id)).put(flat)
+      gun.get(hashConvKey(conv.key)).get(String(msg.id)).put(flat)
     } catch (e) {
       console.warn('transporterMessage error:', e)
     }
