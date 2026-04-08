@@ -744,7 +744,7 @@ function App() {
     try {
       var sig = await provider.request({
         method: 'personal_sign',
-        params: ['ZoneFree messaging key', (address || account).toLowerCase()]
+        params: ['ZoneFree messaging key', address || account]
       })
       var sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
       var seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
