@@ -744,7 +744,11 @@ function App() {
     try {
       var sig = await provider.request({
         method: 'personal_sign',
-        params: ['ZoneFree messaging key', address || account]
+        params: [
+          '0x' + Array.from(new TextEncoder().encode('ZoneFree NaCl key v1'))
+            .map(function(b) { return b.toString(16).padStart(2, '0') }).join(''),
+          address || account
+        ]
       })
       var sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
       var seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
@@ -1126,7 +1130,11 @@ function App() {
                   var preview = ''
                   if (lastMsg && lastMsg.content) {
                     if (typeof lastMsg.content === 'string') {
-                      preview = lastMsg.content.substring(0, 40)
+                      if (lastMsg.content.indexOf('{"enc":') === 0) {
+                        preview = '🔒 Message chiffré'
+                      } else {
+                        preview = lastMsg.content.substring(0, 30)
+                      }
                     } else {
                       preview = '[message]'
                     }
