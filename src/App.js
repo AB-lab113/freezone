@@ -1295,10 +1295,16 @@ function App() {
               }
               if (typeof contenu === 'string' && contenu.indexOf('{"enc":') === 0) {
                 try {
-                  var myAddrR = String(account).toLowerCase()
-                  var senderAddrR = estMoi ? (m.toAddr || '') : (m.fromAddr || '')
+                  var myAddrR = String(account || '').toLowerCase()
+                  var otherPart = activeConversation && activeConversation.participants
+                    ? activeConversation.participants.find(function(p) { return !isMe(p) })
+                    : null
+                  var otherAddrR = String(otherPart || '').toLowerCase()
+                  var senderAddrR = m.fromAddr || (isMe(m.from) ? myAddrR : otherAddrR)
+                  // eslint-disable-next-line no-unused-vars
+                  var receiverAddrR = m.toAddr || (isMe(m.from) ? otherAddrR : myAddrR)
                   var mySecKeyB64R = localStorage.getItem('zonefree-nacl-sec-' + myAddrR)
-                  var senderPubKeyB64R = senderAddrR ? localStorage.getItem('zonefree-nacl-pub-' + senderAddrR) : null
+                  var senderPubKeyB64R = senderAddrR ? localStorage.getItem('zonefree-nacl-pub-' + String(senderAddrR).toLowerCase()) : null
                   if (mySecKeyB64R && senderPubKeyB64R) {
                     var parsedR = JSON.parse(contenu)
                     var encryptedR = new Uint8Array(atob(parsedR.enc).split('').map(function(c) { return c.charCodeAt(0) }))
