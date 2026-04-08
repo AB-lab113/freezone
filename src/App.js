@@ -301,7 +301,7 @@ function App() {
           if (!other) continue
           var key = String(other).toLowerCase()
           if (!byAddr[key]) {
-            byAddr[key] = { address: other, pseudo: getPseudoOrAddr(other), lastSeen: 0, avatar: '' }
+            byAddr[key] = { address: key, pseudo: getPseudoOrAddr(other), lastSeen: 0, avatar: '' }
           }
         }
         var out = []
@@ -333,18 +333,21 @@ function App() {
     try {
       gun.get('zonefree-presence').map().on(function(membre) {
         if (!membre || !membre.address) return
+        var addrLower = String(membre.address).toLowerCase()
         setMembresListe(function(prev) {
-          var existe = prev.some(function(m) { return m.address === membre.address })
+          var existe = prev.some(function(m) {
+            return m && m.address && String(m.address).toLowerCase() === addrLower
+          })
           if (existe) {
             return prev.map(function(m) {
-              return m.address === membre.address
-                ? Object.assign({}, m, { pseudo: membre.pseudo, lastSeen: membre.lastSeen })
+              return (m && m.address && String(m.address).toLowerCase() === addrLower)
+                ? Object.assign({}, m, { address: addrLower, pseudo: membre.pseudo, lastSeen: membre.lastSeen })
                 : m
             })
           }
           return prev.concat([{
-            address: membre.address,
-            pseudo: membre.pseudo || (String(membre.address).substring(0, 6) + '...'),
+            address: addrLower,
+            pseudo: membre.pseudo || (addrLower.substring(0, 6) + '...'),
             lastSeen: membre.lastSeen || 0,
             avatar: ''
           }])
@@ -537,7 +540,11 @@ function App() {
   }
 
   // ═══════════════════ MESSAGERIE LOCALE ═══════════════════
-  var getConvKey = (a, b) => [a, b].sort().join('-')
+  function getConvKey(a, b) {
+    var aLow = String(a || '').toLowerCase()
+    var bLow = String(b || '').toLowerCase()
+    return [aLow, bLow].sort().join('-')
+  }
 
   var demarrerConversation = () => {
     if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
@@ -555,6 +562,11 @@ function App() {
 
   function envoyerMessage() {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
+    var naclPub = account ? localStorage.getItem('zonefree-nacl-' + String(account).toLowerCase()) : null
+    if (!naclPub) {
+      alert('⚠️ Chiffrement NaCl non activé. Va dans Paramètres → Activer NaCl.')
+      return
+    }
     try {
       var content = newMessage
       var msg = {
