@@ -268,7 +268,8 @@ function App() {
 
   useEffect(() => {
     if (account && !naclKeyPair && !naclLoading) {
-      var stored = localStorage.getItem(`zonefree-nacl-${account.toLowerCase()}`)
+      var addrKeyLoad = String(account).toLowerCase()
+      var stored = localStorage.getItem('zonefree-nacl-' + addrKeyLoad)
       if (stored) {
         try {
           var parsed = JSON.parse(stored)
@@ -276,9 +277,15 @@ function App() {
             publicKey: naclUtil.decodeBase64(parsed.pub),
             secretKey: naclUtil.decodeBase64(parsed.sec)
           })
+          if (!localStorage.getItem('zonefree-nacl-pub-' + addrKeyLoad)) {
+            localStorage.setItem('zonefree-nacl-pub-' + addrKeyLoad, parsed.pub)
+          }
+          if (!localStorage.getItem('zonefree-nacl-sec-' + addrKeyLoad)) {
+            localStorage.setItem('zonefree-nacl-sec-' + addrKeyLoad, parsed.sec)
+          }
           try {
-            gun.get('zonefree-nacl-keys').get(String(account).toLowerCase()).put({
-              address: String(account).toLowerCase(),
+            gun.get('zonefree-nacl-keys').get(addrKeyLoad).put({
+              address: addrKeyLoad,
               pubKey: parsed.pub
             })
           } catch (e) { console.warn('publish nacl pub error:', e) }
@@ -606,34 +613,45 @@ function App() {
 
   function envoyerMessage() {
     if (!account || !estAbonne || !newMessage.trim() || !activeConversation) return
-    var naclPub = account ? localStorage.getItem('zonefree-nacl-' + String(account).toLowerCase()) : null
-    if (!naclPub) {
+    var myAddr = String(account).toLowerCase()
+    var mySecKeyB64 = localStorage.getItem('zonefree-nacl-sec-' + myAddr)
+    if (!mySecKeyB64) {
       alert('⚠️ Chiffrement NaCl non activé. Va dans Paramètres → Activer NaCl.')
       return
     }
     try {
-      var content = newMessage
+      var contenu = newMessage
       var otherAddress = activeConversation.participants.find(function(p) { return p !== shortAddr(account) })
-      var otherKey = String(otherAddress || '').toLowerCase()
-      if (otherKey) {
-        var cachedPub = localStorage.getItem('zonefree-nacl-pub-' + otherKey)
-        if (!cachedPub) {
-          try {
-            gun.get('zonefree-nacl-keys').get(otherKey).once(function(data) {
-              if (data && data.pubKey) {
-                localStorage.setItem('zonefree-nacl-pub-' + otherKey, data.pubKey)
-              }
-            })
-          } catch (e) { console.warn('lookup nacl pub error:', e) }
-        }
+      var otherAddr = String(otherAddress || '').toLowerCase()
+      var recipientPubKeyB64 = localStorage.getItem('zonefree-nacl-pub-' + otherAddr)
+      if (!recipientPubKeyB64) {
+        try {
+          gun.get('zonefree-nacl-keys').get(otherAddr).once(function(data) {
+            if (data && data.pubKey) {
+              localStorage.setItem('zonefree-nacl-pub-' + otherAddr, data.pubKey)
+            }
+          })
+        } catch (e) { console.warn('lookup nacl pub error:', e) }
+        alert('Clé du destinataire non trouvée. Réessaie dans 5 secondes.')
+        return
       }
+      var recipientPubKey = new Uint8Array(atob(recipientPubKeyB64).split('').map(function(c) { return c.charCodeAt(0) }))
+      var mySecKey = new Uint8Array(atob(mySecKeyB64).split('').map(function(c) { return c.charCodeAt(0) }))
+      var nonce = nacl.randomBytes(nacl.box.nonceLength)
+      var msgBytes = new TextEncoder().encode(contenu)
+      var encrypted = nacl.box(msgBytes, nonce, recipientPubKey, mySecKey)
+      var encryptedB64 = btoa(String.fromCharCode.apply(null, encrypted))
+      var nonceB64 = btoa(String.fromCharCode.apply(null, nonce))
+      var content = JSON.stringify({ enc: encryptedB64, nonce: nonceB64, v: 'box1' })
       var msg = {
         id: Date.now(),
         from: shortAddr(account),
+        fromAddr: myAddr,
         to: otherAddress,
+        toAddr: otherAddr,
         content: content,
         type: 'text',
-        encrypted: false,
+        encrypted: true,
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(),
         read: false
@@ -733,13 +751,14 @@ function App() {
       var kp = nacl.box.keyPair.fromSecretKey(seed)
       setNaclKeyPair(kp)
       var pubB64 = naclUtil.encodeBase64(kp.publicKey)
-      localStorage.setItem(`zonefree-nacl-${account.toLowerCase()}`, JSON.stringify({
-        pub: pubB64,
-        sec: naclUtil.encodeBase64(kp.secretKey)
-      }))
+      var secB64 = naclUtil.encodeBase64(kp.secretKey)
+      var addrKey = String(account).toLowerCase()
+      localStorage.setItem('zonefree-nacl-' + addrKey, JSON.stringify({ pub: pubB64, sec: secB64 }))
+      localStorage.setItem('zonefree-nacl-pub-' + addrKey, pubB64)
+      localStorage.setItem('zonefree-nacl-sec-' + addrKey, secB64)
       try {
-        gun.get('zonefree-nacl-keys').get(String(account).toLowerCase()).put({
-          address: String(account).toLowerCase(),
+        gun.get('zonefree-nacl-keys').get(addrKey).put({
+          address: addrKey,
           pubKey: pubB64
         })
       } catch (e) { console.warn('publish nacl pub error:', e) }
@@ -1209,6 +1228,27 @@ function App() {
                   contenu = m.content
                 } else {
                   contenu = String(m.content)
+                }
+              }
+              if (typeof contenu === 'string' && contenu.indexOf('{"enc":') === 0) {
+                try {
+                  var myAddrR = String(account).toLowerCase()
+                  var senderAddrR = estMoi ? (m.toAddr || '') : (m.fromAddr || '')
+                  var mySecKeyB64R = localStorage.getItem('zonefree-nacl-sec-' + myAddrR)
+                  var senderPubKeyB64R = senderAddrR ? localStorage.getItem('zonefree-nacl-pub-' + senderAddrR) : null
+                  if (mySecKeyB64R && senderPubKeyB64R) {
+                    var parsedR = JSON.parse(contenu)
+                    var encryptedR = new Uint8Array(atob(parsedR.enc).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var nonceR = new Uint8Array(atob(parsedR.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var mySecKeyR = new Uint8Array(atob(mySecKeyB64R).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var senderPubKeyR = new Uint8Array(atob(senderPubKeyB64R).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var decryptedR = nacl.box.open(encryptedR, nonceR, senderPubKeyR, mySecKeyR)
+                    contenu = decryptedR ? new TextDecoder().decode(decryptedR) : '[message chiffré]'
+                  } else {
+                    contenu = '[message chiffré]'
+                  }
+                } catch (e) {
+                  contenu = '[message chiffré]'
                 }
               }
               var wrapperClass = estMoi ? 'bubble-wrapper sent' : 'bubble-wrapper received'
