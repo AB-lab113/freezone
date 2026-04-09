@@ -1086,7 +1086,12 @@ function App() {
         <div className="logo" onClick={goHome} style={{ cursor: 'pointer' }}>
           Zone<span>Free</span>
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{
+          display: 'flex', alignItems: 'center',
+          flexWrap: 'wrap', gap: '8px',
+          padding: '8px 12px',
+          position: 'relative', zIndex: 100
+        }}>
           <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? '☀️' : '🌙'}</button>
           {account && (
             <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -1296,21 +1301,22 @@ function App() {
               if (typeof contenu === 'string' && contenu.indexOf('{"enc":') === 0) {
                 try {
                   var myAddrR = String(account || '').toLowerCase()
-                  var otherPart = activeConversation && activeConversation.participants
-                    ? activeConversation.participants.find(function(p) { return !isMe(p) })
-                    : null
-                  var otherAddrR = String(otherPart || '').toLowerCase()
-                  var senderAddrR = m.fromAddr || (isMe(m.from) ? myAddrR : otherAddrR)
-                  // eslint-disable-next-line no-unused-vars
-                  var receiverAddrR = m.toAddr || (isMe(m.from) ? otherAddrR : myAddrR)
-                  var mySecKeyB64R = localStorage.getItem('zonefree-nacl-sec-' + myAddrR)
-                  var senderPubKeyB64R = senderAddrR ? localStorage.getItem('zonefree-nacl-pub-' + String(senderAddrR).toLowerCase()) : null
-                  if (mySecKeyB64R && senderPubKeyB64R) {
+                  var otherPartR = ''
+                  if (activeConversation && activeConversation.participants) {
+                    for (var pi = 0; pi < activeConversation.participants.length; pi++) {
+                      var pp = String(activeConversation.participants[pi]).toLowerCase()
+                      if (pp !== myAddrR) { otherPartR = pp; break }
+                    }
+                  }
+                  var senderAddrR = estMoi ? myAddrR : otherPartR
+                  var senderPubB64 = senderAddrR ? localStorage.getItem('zonefree-nacl-pub-' + senderAddrR) : null
+                  var mySecB64R = localStorage.getItem('zonefree-nacl-sec-' + myAddrR)
+                  if (mySecB64R && senderPubB64) {
                     var parsedR = JSON.parse(contenu)
                     var encryptedR = new Uint8Array(atob(parsedR.enc).split('').map(function(c) { return c.charCodeAt(0) }))
                     var nonceR = new Uint8Array(atob(parsedR.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
-                    var mySecKeyR = new Uint8Array(atob(mySecKeyB64R).split('').map(function(c) { return c.charCodeAt(0) }))
-                    var senderPubKeyR = new Uint8Array(atob(senderPubKeyB64R).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var mySecKeyR = new Uint8Array(atob(mySecB64R).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var senderPubKeyR = new Uint8Array(atob(senderPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
                     var decryptedR = nacl.box.open(encryptedR, nonceR, senderPubKeyR, mySecKeyR)
                     contenu = decryptedR ? new TextDecoder().decode(decryptedR) : '[message chiffré]'
                   } else {
