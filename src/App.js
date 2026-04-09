@@ -441,6 +441,35 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(function() {
+    try {
+      gun.get('zonefree-topics').map().on(function(topic) {
+        if (!topic || !topic.id || !topic.title) return
+        setForums(function(prev) {
+          var changed = false
+          var next = prev.map(function(f) {
+            if (!topic.forumId || f.id !== topic.forumId) return f
+            var existe = (f.topics || []).some(function(t) { return String(t.id) === String(topic.id) })
+            if (existe) return f
+            changed = true
+            var newTopic = Object.assign({}, {
+              id: topic.id,
+              title: topic.title,
+              content: topic.content || '',
+              author: topic.author || '',
+              pinned: false,
+              replies: [],
+              date: topic.date || new Date().toLocaleDateString('fr-FR')
+            })
+            return Object.assign({}, f, { topics: [newTopic].concat(f.topics || []) })
+          })
+          return changed ? next : prev
+        })
+      })
+    } catch (e) { console.warn('Gun topics subscribe error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
@@ -994,6 +1023,17 @@ function App() {
     var upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
+    try {
+      gun.get('zonefree-topics').get(String(topic.id)).put({
+        id: topic.id,
+        title: topic.title,
+        author: topic.author,
+        content: topic.content,
+        timestamp: topic.id,
+        forumId: activeForum.id,
+        date: topic.date
+      })
+    } catch (e) { console.warn('publish topic Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
@@ -1304,7 +1344,15 @@ function App() {
       {/* ══════════════ PAGE CONVERSATION LOCALE ══════════════ */}
       {page === 'conversation' && activeConversation && (
         <div className="forum-page">
-          <button onClick={function() { setPage('messages') }}>← Retour</button>
+          <button
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '10px 16px', fontSize: '16px', cursor: 'pointer',
+              background: 'none', border: 'none', color: '#6c47ff',
+              minHeight: '44px', minWidth: '44px', touchAction: 'manipulation'
+            }}
+            onClick={function() { setPage('messages'); setActiveConversation(null) }}
+          >← Retour</button>
           <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return !isMe(p) }) || activeConversation.participants[0])}</h2>
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
