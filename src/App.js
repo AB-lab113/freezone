@@ -1325,18 +1325,14 @@ function App() {
                 try {
                   var mySecB64R = localStorage.getItem('zonefree-nacl-sec-' + String(account || '').toLowerCase())
                   var parsed = JSON.parse(m.content)
-                  var senderAddr = estMoi
-                    ? String(account || '').toLowerCase()
-                    : (activeConversation && activeConversation.participants
-                        ? (function() {
-                            for (var pi = 0; pi < activeConversation.participants.length; pi++) {
-                              var pp = String(activeConversation.participants[pi]).toLowerCase()
-                              if (pp !== String(account || '').toLowerCase()) return pp
-                            }
-                            return ''
-                          })()
-                        : '')
-                  var senderPubB64 = senderAddr ? localStorage.getItem('zonefree-nacl-pub-' + senderAddr) : null
+                  var otherPartR = ''
+                  if (activeConversation && activeConversation.participants) {
+                    for (var pi = 0; pi < activeConversation.participants.length; pi++) {
+                      var pp = String(activeConversation.participants[pi]).toLowerCase()
+                      if (pp !== String(account || '').toLowerCase()) { otherPartR = pp; break }
+                    }
+                  }
+                  var senderPubB64 = otherPartR ? localStorage.getItem('zonefree-nacl-pub-' + otherPartR) : null
                   if (mySecB64R && senderPubB64) {
                     var encBytes = new Uint8Array(atob(parsed.enc).split('').map(function(c) { return c.charCodeAt(0) }))
                     var nonceBytes = new Uint8Array(atob(parsed.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
