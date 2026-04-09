@@ -288,6 +288,11 @@ function App() {
               address: addrKeyLoad,
               pubKey: parsed.pub
             })
+            gun.get('zonefree-nacl-keys').get(addrKeyLoad).on(function(data) {
+              if (data && data.pubKey) {
+                localStorage.setItem('zonefree-nacl-pub-' + addrKeyLoad, data.pubKey)
+              }
+            })
           } catch (e) { console.warn('publish nacl pub error:', e) }
         } catch (e) { console.warn('NaCl: clé locale corrompue') }
       }
@@ -671,6 +676,16 @@ function App() {
       var contenu = newMessage
       var otherAddress = activeConversation.participants.find(function(p) { return !isMe(p) })
       var otherAddr = String(otherAddress || '').toLowerCase()
+      // Toujours re-fetcher la clé pub du destinataire depuis Gun
+      if (otherAddr) {
+        try {
+          gun.get('zonefree-nacl-keys').get(otherAddr).once(function(data) {
+            if (data && data.pubKey) {
+              localStorage.setItem('zonefree-nacl-pub-' + otherAddr, data.pubKey)
+            }
+          })
+        } catch (e) { console.warn('lookup nacl pub error:', e) }
+      }
       var otherPubB64 = localStorage.getItem('zonefree-nacl-pub-' + otherAddr)
       var mySecB64 = localStorage.getItem('zonefree-nacl-sec-' + myAddr)
       var content = contenu
@@ -691,14 +706,6 @@ function App() {
         } catch (e) {
           console.warn('chiffrement échoué, envoi en clair', e)
         }
-      } else if (otherAddr) {
-        try {
-          gun.get('zonefree-nacl-keys').get(otherAddr).once(function(data) {
-            if (data && data.pubKey) {
-              localStorage.setItem('zonefree-nacl-pub-' + otherAddr, data.pubKey)
-            }
-          })
-        } catch (e) { console.warn('lookup nacl pub error:', e) }
       }
       var msg = {
         id: Date.now(),
@@ -821,6 +828,11 @@ function App() {
         gun.get('zonefree-nacl-keys').get(addrKey).put({
           address: addrKey,
           pubKey: pubB64
+        })
+        gun.get('zonefree-nacl-keys').get(addrKey).on(function(data) {
+          if (data && data.pubKey) {
+            localStorage.setItem('zonefree-nacl-pub-' + addrKey, data.pubKey)
+          }
         })
       } catch (e) { console.warn('publish nacl pub error:', e) }
       envoyerNotif('🔐 NaCl E2E actif', 'Chiffrement Curve25519 activé !')
