@@ -671,9 +671,35 @@ function App() {
       var contenu = newMessage
       var otherAddress = activeConversation.participants.find(function(p) { return !isMe(p) })
       var otherAddr = String(otherAddress || '').toLowerCase()
-      // TODO: réactiver chiffrement
-      var content = contenu // texte clair temporaire pour test
-      // (chiffrement désactivé temporairement)
+      var otherPubB64 = localStorage.getItem('zonefree-nacl-pub-' + otherAddr)
+      var mySecB64 = localStorage.getItem('zonefree-nacl-sec-' + myAddr)
+      var content = contenu
+      var encrypted = false
+      if (otherPubB64 && mySecB64) {
+        try {
+          var recipientPub = new Uint8Array(atob(otherPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
+          var mySec = new Uint8Array(atob(mySecB64).split('').map(function(c) { return c.charCodeAt(0) }))
+          var msgBytes = new TextEncoder().encode(contenu)
+          var nonce = nacl.randomBytes(nacl.box.nonceLength)
+          var box = nacl.box(msgBytes, nonce, recipientPub, mySec)
+          content = JSON.stringify({
+            enc: btoa(String.fromCharCode.apply(null, box)),
+            nonce: btoa(String.fromCharCode.apply(null, nonce)),
+            v: 'box1'
+          })
+          encrypted = true
+        } catch (e) {
+          console.warn('chiffrement échoué, envoi en clair', e)
+        }
+      } else if (otherAddr) {
+        try {
+          gun.get('zonefree-nacl-keys').get(otherAddr).once(function(data) {
+            if (data && data.pubKey) {
+              localStorage.setItem('zonefree-nacl-pub-' + otherAddr, data.pubKey)
+            }
+          })
+        } catch (e) { console.warn('lookup nacl pub error:', e) }
+      }
       var msg = {
         id: Date.now(),
         from: shortAddr(account),
@@ -682,7 +708,7 @@ function App() {
         toAddr: otherAddr,
         content: content,
         type: 'text',
-        encrypted: false,
+        encrypted: encrypted,
         date: new Date().toLocaleDateString('fr-FR'),
         timestamp: Date.now(),
         read: false
@@ -1282,8 +1308,37 @@ function App() {
                   contenu = String(m.content)
                 }
               }
-              // TODO: réactiver chiffrement
-              var displayContent = m.content // afficher tel quel
+              var displayContent = m.content
+              if (m.content && typeof m.content === 'string' && m.content.indexOf('{"enc":') === 0) {
+                try {
+                  var mySecB64R = localStorage.getItem('zonefree-nacl-sec-' + String(account || '').toLowerCase())
+                  var parsed = JSON.parse(m.content)
+                  var senderAddr = estMoi
+                    ? String(account || '').toLowerCase()
+                    : (activeConversation && activeConversation.participants
+                        ? (function() {
+                            for (var pi = 0; pi < activeConversation.participants.length; pi++) {
+                              var pp = String(activeConversation.participants[pi]).toLowerCase()
+                              if (pp !== String(account || '').toLowerCase()) return pp
+                            }
+                            return ''
+                          })()
+                        : '')
+                  var senderPubB64 = senderAddr ? localStorage.getItem('zonefree-nacl-pub-' + senderAddr) : null
+                  if (mySecB64R && senderPubB64) {
+                    var encBytes = new Uint8Array(atob(parsed.enc).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var nonceBytes = new Uint8Array(atob(parsed.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var mySecR = new Uint8Array(atob(mySecB64R).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var senderPub = new Uint8Array(atob(senderPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
+                    var decrypted = nacl.box.open(encBytes, nonceBytes, senderPub, mySecR)
+                    displayContent = decrypted ? new TextDecoder().decode(decrypted) : '[clé incorrecte]'
+                  } else {
+                    displayContent = '[clé manquante]'
+                  }
+                } catch (e) {
+                  displayContent = '[erreur déchiffrement]'
+                }
+              }
               contenu = typeof displayContent === 'string' ? displayContent : String(displayContent || '')
               var wrapperClass = estMoi ? 'bubble-wrapper sent' : 'bubble-wrapper received'
               var bubbleClass = estMoi ? 'bubble sent' : 'bubble received'
