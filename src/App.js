@@ -1317,9 +1317,30 @@ function App() {
                     var nonceR = new Uint8Array(atob(parsedR.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
                     var mySecKeyR = new Uint8Array(atob(mySecB64R).split('').map(function(c) { return c.charCodeAt(0) }))
                     var senderPubKeyR = new Uint8Array(atob(senderPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
+                    console.log('[DECRYPT DEBUG]', {
+                      senderAddr: senderAddrR,
+                      myAddr: myAddrR,
+                      otherPart: otherPartR,
+                      estMoi: estMoi,
+                      hasSenderPub: !!senderPubB64,
+                      hasMySecKey: !!mySecB64R,
+                      encLen: encryptedR ? encryptedR.length : 0,
+                      nonceLen: nonceR ? nonceR.length : 0
+                    })
                     var decryptedR = nacl.box.open(encryptedR, nonceR, senderPubKeyR, mySecKeyR)
+                    console.log('[DECRYPT RESULT]', decryptedR ? 'OK: ' + new TextDecoder().decode(decryptedR).substring(0, 20) : 'ECHEC')
                     contenu = decryptedR ? new TextDecoder().decode(decryptedR) : '[message chiffré]'
                   } else {
+                    console.log('[DECRYPT DEBUG]', {
+                      senderAddr: senderAddrR,
+                      myAddr: myAddrR,
+                      otherPart: otherPartR,
+                      estMoi: estMoi,
+                      hasSenderPub: !!senderPubB64,
+                      hasMySecKey: !!mySecB64R,
+                      encLen: 0,
+                      nonceLen: 0
+                    })
                     contenu = '[message chiffré]'
                   }
                 } catch (e) {
