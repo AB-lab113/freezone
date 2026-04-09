@@ -1082,7 +1082,11 @@ function App() {
     <div>
 
       {/* ══════════════ HEADER ══════════════ */}
-      <header className="header">
+      <header className="header" style={{
+        display: 'flex', flexWrap: 'wrap',
+        alignItems: 'center', justifyContent: 'space-between',
+        gap: '8px', padding: '8px 12px'
+      }}>
         <div className="logo" onClick={goHome} style={{ cursor: 'pointer' }}>
           Zone<span>Free</span>
         </div>
@@ -1090,12 +1094,14 @@ function App() {
           display: 'flex', alignItems: 'center',
           flexWrap: 'wrap', gap: '8px',
           padding: '8px 12px',
-          position: 'relative', zIndex: 100
+          position: 'relative', zIndex: 100,
+          justifyContent: 'flex-end',
+          maxWidth: '70vw'
         }}>
-          <button className="btn btn-ghost" onClick={() => setDark(!dark)}>{dark ? '☀️' : '🌙'}</button>
+          <button className="btn btn-ghost" onClick={() => setDark(!dark)} style={{ minWidth: '36px', minHeight: '36px' }}>{dark ? '☀️' : '🌙'}</button>
           {account && (
             <div style={{ position: 'relative', display: 'inline-block' }}>
-              <button className="btn btn-ghost" onClick={function() { setPage('messages') }} style={{ fontSize: 16 }}>
+              <button className="btn btn-ghost" onClick={function() { setPage('messages') }} style={{ fontSize: 16, minWidth: '36px', minHeight: '36px' }}>
                 ✉️
               </button>
               {unreadCount > 0 && React.createElement('span', {
@@ -1110,7 +1116,7 @@ function App() {
               }, unreadCount > 9 ? '9+' : String(unreadCount))}
             </div>
           )}
-          <button className="btn btn-ghost" onClick={() => setPage('profil')} style={{ fontSize: 16 }}>👤</button>
+          <button className="btn btn-ghost" onClick={() => setPage('profil')} style={{ fontSize: 16, minWidth: '36px', minHeight: '36px' }}>👤</button>
           {account ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button className="btn btn-ghost" onClick={disconnectAll} title="Déconnecter" style={{ fontSize: 14, padding: '6px 10px' }}>
