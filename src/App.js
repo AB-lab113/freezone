@@ -770,10 +770,13 @@ function App() {
       var reader = new FileReader()
       reader.onload = (ev) => {
         try {
+          var otherImg = activeConversation.participants.find(function(p) { return !isMe(p) })
           var msg = {
             id: Date.now(),
             from: shortAddr(account),
-            to: activeConversation.participants.find(function(p) { return !isMe(p) }),
+            fromAddr: String(account || '').toLowerCase(),
+            to: otherImg,
+            toAddr: String(otherImg || '').toLowerCase(),
             content: ev.target.result, type: 'image',
             date: new Date().toLocaleDateString('fr-FR'),
             timestamp: Date.now(), read: false
@@ -781,6 +784,7 @@ function App() {
           var updated = Object.assign({}, activeConversation, { msgs: activeConversation.msgs.concat([msg]) })
           setMessages(function(prev) { return prev.map(function(c) { return c.key === activeConversation.key ? updated : c }) })
           setActiveConversation(updated)
+          transporterMessage(activeConversation, msg)
         } catch (err) {
           console.error('envoyerImage onload crash:', err)
           alert('Erreur envoi image: ' + err.message)
@@ -1024,7 +1028,7 @@ function App() {
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     try {
-      gun.get('zonefree-topics').get(String(topic.id)).put({
+      gun.get('zonefree-topics').set({
         id: topic.id,
         title: topic.title,
         author: topic.author,
@@ -1344,15 +1348,28 @@ function App() {
       {/* ══════════════ PAGE CONVERSATION LOCALE ══════════════ */}
       {page === 'conversation' && activeConversation && (
         <div className="forum-page">
-          <button
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '10px 16px', fontSize: '16px', cursor: 'pointer',
-              background: 'none', border: 'none', color: '#6c47ff',
-              minHeight: '44px', minWidth: '44px', touchAction: 'manipulation'
-            }}
-            onClick={function() { setPage('messages'); setActiveConversation(null) }}
-          >← Retour</button>
+          {React.createElement('button', {
+            onClick: function(e) {
+              e.preventDefault()
+              e.stopPropagation()
+              setPage('messages')
+              setActiveConversation(null)
+            },
+            onTouchEnd: function(e) {
+              e.preventDefault()
+              setPage('messages')
+              setActiveConversation(null)
+            },
+            style: {
+              display: 'inline-flex', alignItems: 'center',
+              padding: '12px 20px', fontSize: '16px', cursor: 'pointer',
+              background: 'none', border: '2px solid #6c47ff',
+              borderRadius: '8px', color: '#6c47ff',
+              minHeight: '48px', minWidth: '80px',
+              touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none', WebkitUserSelect: 'none'
+            }
+          }, '← Retour')}
           <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return !isMe(p) }) || activeConversation.participants[0])}</h2>
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
