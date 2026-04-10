@@ -331,33 +331,43 @@ function App() {
           }
           return Object.assign({}, c, { key: String(c.key || '').toLowerCase() })
         }
-        var byKey = {}
+        function participantsKey(c) {
+          if (!c || !c.participants || c.participants.length < 2) return ''
+          return c.participants.slice().map(function(p) { return String(p).toLowerCase() }).sort().join('-')
+        }
+        function mergeInto(target, source) {
+          var seenIds = {}
+          for (var m = 0; m < target.msgs.length; m++) {
+            if (target.msgs[m] && target.msgs[m].id != null) seenIds[String(target.msgs[m].id)] = true
+          }
+          var add = []
+          var src = source.msgs || []
+          for (var n = 0; n < src.length; n++) {
+            var msg = src[n]
+            if (!msg || msg.id == null) continue
+            if (seenIds[String(msg.id)]) continue
+            seenIds[String(msg.id)] = true
+            add.push(msg)
+          }
+          return Object.assign({}, target, { msgs: target.msgs.concat(add) })
+        }
+        var byParts = {}
         for (var i = 0; i < prev.length; i++) {
           var c = normalizeConv(prev[i])
           if (!c) continue
-          var k = String(c.key || '').toLowerCase()
-          if (!byKey[k]) {
-            byKey[k] = Object.assign({}, c, { key: k, msgs: (c.msgs || []).slice() })
+          var pk = participantsKey(c)
+          var canonKey = pk || String(c.key || '').toLowerCase()
+          if (pk && c.key !== pk) {
+            c = Object.assign({}, c, { key: pk })
+          }
+          if (!byParts[canonKey]) {
+            byParts[canonKey] = Object.assign({}, c, { key: canonKey, msgs: (c.msgs || []).slice() })
           } else {
-            var existing = byKey[k]
-            var seenIds = {}
-            for (var m = 0; m < existing.msgs.length; m++) {
-              if (existing.msgs[m] && existing.msgs[m].id != null) seenIds[existing.msgs[m].id] = true
-            }
-            var add = []
-            var src = c.msgs || []
-            for (var n = 0; n < src.length; n++) {
-              var msg = src[n]
-              if (!msg || msg.id == null) continue
-              if (seenIds[msg.id]) continue
-              seenIds[msg.id] = true
-              add.push(msg)
-            }
-            byKey[k] = Object.assign({}, existing, { msgs: existing.msgs.concat(add) })
+            byParts[canonKey] = mergeInto(byParts[canonKey], c)
           }
         }
         var out = []
-        for (var kk in byKey) { if (Object.prototype.hasOwnProperty.call(byKey, kk)) out.push(byKey[kk]) }
+        for (var kk in byParts) { if (Object.prototype.hasOwnProperty.call(byParts, kk)) out.push(byParts[kk]) }
         try { localStorage.setItem('zonefree-messages', JSON.stringify(out)) } catch (e) {}
         return out
       })
@@ -801,33 +811,44 @@ function App() {
     setActiveConversation(conv)
     setPage('conversation')
     if (!conv || !conv.key) return
-    if (gunSubscribed.current[conv.key]) return
-    gunSubscribed.current[conv.key] = true
-    try {
-      gun.get(hashConvKey(conv.key)).map().on(function(msg) {
-        if (!msg || !msg.id) return
-        if (!msg.content && msg.content !== '') return
-        var msgId = String(msg.id)
-        setMessages(function(prev) {
-          return prev.map(function(c) {
-            if (c.key !== conv.key) return c
-            var existe = c.msgs && c.msgs.some(function(m) { return String(m.id) === msgId })
-            if (existe) return c
-            var newMsgs = (c.msgs || []).concat([msg])
-            newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
-            return Object.assign({}, c, { msgs: newMsgs })
-          })
-        })
-        setActiveConversation(function(prev) {
-          if (!prev || prev.key !== conv.key) return prev
-          var existe = prev.msgs && prev.msgs.some(function(m) { return String(m.id) === msgId })
-          if (existe) return prev
-          var newMsgs = (prev.msgs || []).concat([msg])
+    function onGunMsg(msg) {
+      if (!msg || !msg.id) return
+      if (!msg.content && msg.content !== '') return
+      var msgId = String(msg.id)
+      setMessages(function(prev) {
+        return prev.map(function(c) {
+          if (c.key !== conv.key) return c
+          var existe = c.msgs && c.msgs.some(function(m) { return String(m.id) === msgId })
+          if (existe) return c
+          var newMsgs = (c.msgs || []).concat([msg])
           newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
-          return Object.assign({}, prev, { msgs: newMsgs })
+          return Object.assign({}, c, { msgs: newMsgs })
         })
       })
-    } catch (e) { console.warn('Gun subscribe error:', e) }
+      setActiveConversation(function(prev) {
+        if (!prev || prev.key !== conv.key) return prev
+        var existe = prev.msgs && prev.msgs.some(function(m) { return String(m.id) === msgId })
+        if (existe) return prev
+        var newMsgs = (prev.msgs || []).concat([msg])
+        newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
+        return Object.assign({}, prev, { msgs: newMsgs })
+      })
+    }
+    if (!gunSubscribed.current[conv.key]) {
+      gunSubscribed.current[conv.key] = true
+      try {
+        gun.get(hashConvKey(conv.key)).map().on(onGunMsg)
+      } catch (e) { console.warn('Gun subscribe error:', e) }
+    }
+    if (conv.participants && conv.participants.length === 2) {
+      var keyInverse = conv.participants.slice().reverse().join('-').toLowerCase()
+      if (keyInverse !== conv.key && !gunSubscribed.current[keyInverse]) {
+        gunSubscribed.current[keyInverse] = true
+        try {
+          gun.get(hashConvKey(keyInverse)).map().on(onGunMsg)
+        } catch (e) { console.warn('Gun subscribe inverse error:', e) }
+      }
+    }
   }
 
   var unreadCount = account
@@ -1230,7 +1251,16 @@ function App() {
       {page === 'messages' && account && (
         <MessagerieErrorBoundary>
         <div className="forum-page">
-          <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
+          {React.createElement('button', {
+            className: 'back-btn',
+            onClick: function(e) { e.preventDefault(); e.stopPropagation(); goHome() },
+            onTouchEnd: function(e) { e.preventDefault(); goHome() },
+            style: {
+              minHeight: '44px', touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative', zIndex: 999
+            }
+          }, '← Retour à l\'accueil')}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <h2 style={{ fontSize: 22 }}>✉️ Messagerie {naclKeyPair ? '🔐 NaCl E2E' : 'locale'}</h2>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -1487,7 +1517,16 @@ function App() {
       {/* ══════════════ PAGE PROFIL ══════════════ */}
       {page === 'profil' && account && (
         <div className="forum-page">
-          <button className="back-btn" onClick={goHome}>← Retour à l'accueil</button>
+          {React.createElement('button', {
+            className: 'back-btn',
+            onClick: function(e) { e.preventDefault(); e.stopPropagation(); goHome() },
+            onTouchEnd: function(e) { e.preventDefault(); goHome() },
+            style: {
+              minHeight: '44px', touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative', zIndex: 999
+            }
+          }, '← Retour à l\'accueil')}
 
           {/* CARTE IDENTITÉ */}
           <div style={{ borderRadius: 20, padding: 36, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1', textAlign: 'center' }}>
