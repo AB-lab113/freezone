@@ -805,23 +805,25 @@ function App() {
     gunSubscribed.current[conv.key] = true
     try {
       gun.get(hashConvKey(conv.key)).map().on(function(msg) {
-        if (!msg || !msg.id || !msg.content) return
+        if (!msg || !msg.id) return
+        if (!msg.content && msg.content !== '') return
+        var msgId = String(msg.id)
         setMessages(function(prev) {
           return prev.map(function(c) {
             if (c.key !== conv.key) return c
-            var existe = c.msgs && c.msgs.some(function(m) { return m.id === msg.id })
+            var existe = c.msgs && c.msgs.some(function(m) { return String(m.id) === msgId })
             if (existe) return c
             var newMsgs = (c.msgs || []).concat([msg])
-            newMsgs.sort(function(a, b) { return a.timestamp - b.timestamp })
+            newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
             return Object.assign({}, c, { msgs: newMsgs })
           })
         })
         setActiveConversation(function(prev) {
           if (!prev || prev.key !== conv.key) return prev
-          var existe = prev.msgs && prev.msgs.some(function(m) { return m.id === msg.id })
+          var existe = prev.msgs && prev.msgs.some(function(m) { return String(m.id) === msgId })
           if (existe) return prev
           var newMsgs = (prev.msgs || []).concat([msg])
-          newMsgs.sort(function(a, b) { return a.timestamp - b.timestamp })
+          newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
           return Object.assign({}, prev, { msgs: newMsgs })
         })
       })
@@ -1126,10 +1128,13 @@ function App() {
       var flat = {
         id: msg.id,
         from: msg.from || '',
+        fromAddr: msg.fromAddr || '',
         to: msg.to || '',
+        toAddr: msg.toAddr || '',
         content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
         timestamp: msg.timestamp || Date.now(),
-        type: msg.type || 'text'
+        type: msg.type || 'text',
+        date: msg.date || new Date().toLocaleDateString('fr-FR')
       }
       gun.get(hashConvKey(conv.key)).get(String(msg.id)).put(flat)
     } catch (e) {
@@ -1347,7 +1352,8 @@ function App() {
 
       {/* ══════════════ PAGE CONVERSATION LOCALE ══════════════ */}
       {page === 'conversation' && activeConversation && (
-        <div className="forum-page">
+        <div className="forum-page" style={{ position: 'relative', overflow: 'visible' }}>
+          <div style={{ position: 'relative', zIndex: 999, overflow: 'visible', marginBottom: 12 }}>
           {React.createElement('button', {
             onClick: function(e) {
               e.preventDefault()
@@ -1367,9 +1373,11 @@ function App() {
               borderRadius: '8px', color: '#6c47ff',
               minHeight: '48px', minWidth: '80px',
               touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-              userSelect: 'none', WebkitUserSelect: 'none'
+              userSelect: 'none', WebkitUserSelect: 'none',
+              position: 'relative', zIndex: 999
             }
           }, '← Retour')}
+          </div>
           <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return !isMe(p) }) || activeConversation.participants[0])}</h2>
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
