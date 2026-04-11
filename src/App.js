@@ -494,7 +494,8 @@ function App() {
     var NOMS_CORROMPUS = ['P', 'p', 'Est', '8', '9', '11', '12', '13',
       'test gun3', 'test gun 3', 'test gun4', 'test gun 4', 'tg4',
       'P7', 'p7', 'G5', 'g5', 'Gun 5', 'gun 5',
-      'test gun', 'Gun5', 'gun5', 'tg5']
+      'test gun', 'Gun5', 'gun5', 'tg5',
+      'Bb', 'bb']
     try {
       gun.get('zonefree-salons').map().once(function(salon) {
         if (!salon || !salon.id) return
@@ -504,6 +505,7 @@ function App() {
           NOMS_CORROMPUS.indexOf(nom) !== -1 ||
           NOMS_CORROMPUS.indexOf(nom.toLowerCase()) !== -1
         if (/^[A-Za-z]\d+$/.test(nom)) estCorrompu = true
+        if (/^[A-Za-z]{1,2}$/.test(nom)) estCorrompu = true
         if (estCorrompu) {
           console.log('[CLEANUP] Blacklist salon corrompu:', nom, salon.id)
           gun.get('zonefree-salons-deleted').get(String(salon.id)).put({
@@ -1963,7 +1965,10 @@ function App() {
             ? <div className="no-results"><span>🔍</span><p>Aucun salon trouvé pour <strong>{recherche}</strong></p></div>
             : <div className="forums-grid">
                 {forumsFiltered.map(function(f) { return (
-                  <div key={f.id} className="forum-card" onClick={function() { openForum(f) }}>
+                  <div key={f.id} className="forum-card" onClick={function(e) {
+                    if (e.target && e.target.closest && e.target.closest('button')) return
+                    openForum(f)
+                  }}>
                     <div className="forum-emoji">{f.emoji}</div>
                     <div className="forum-name">{f.name}</div>
                     <div className="forum-desc">{f.description}</div>
