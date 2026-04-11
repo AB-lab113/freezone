@@ -486,8 +486,11 @@ function App() {
   useEffect(function() {
     var deletedIds = {}
     try {
-      gun.get('zonefree-salons-deleted').map().once(function(item) {
-        if (item && item.id) deletedIds[String(item.id)] = true
+      gun.get('zonefree-salons-deleted').map().once(function(ref, key) {
+        if (!key || key === '_') return
+        gun.get('zonefree-salons-deleted').get(key).once(function(item) {
+          if (item && item.id) deletedIds[String(item.id)] = true
+        })
       })
     } catch (e) { console.warn('Gun salons-deleted preload error:', e) }
 
@@ -517,33 +520,34 @@ function App() {
 
     var to = setTimeout(function() {
       try {
-        gun.get('zonefree-salons').map().on(function(salon) {
-          if (!salon || !salon.id) return
-          if (deletedIds[String(salon.id)]) return
-          var nomSalon = String(salon.name || salon.nom || '').trim()
-          if (nomSalon.length < 2) return
-          if (/^\d+$/.test(nomSalon)) return
-          setForums(function(prev) {
-            var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
-            if (existe) return prev
-            return prev.concat([Object.assign({}, {
-              id: salon.id,
-              name: nomSalon,
-              emoji: salon.emoji || salon.icon || '💬',
-              description: salon.description || '',
-              creator: salon.creator || '',
-              topics: []
-            })])
+        gun.get('zonefree-salons').map().on(function(ref, key) {
+          if (!ref || !key || key === '_') return
+          gun.get('zonefree-salons').get(key).once(function(salon) {
+            if (!salon || !salon.id) return
+            if (deletedIds[String(salon.id)]) return
+            var nomSalon = String(salon.name || salon.nom || '').trim()
+            if (nomSalon.length < 2) return
+            if (/^\d+$/.test(nomSalon)) return
+            if (/^[A-Za-z]{1,2}$/.test(nomSalon)) return
+            if (/^[A-Za-z]\d+$/.test(nomSalon)) return
+            setForums(function(prev) {
+              var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
+              if (existe) return prev
+              return prev.concat([Object.assign({}, salon, { topics: salon.topics || [] })])
+            })
           })
         })
       } catch (e) { console.warn('Gun salons subscribe error:', e) }
 
       try {
-        gun.get('zonefree-salons-deleted').map().on(function(item) {
-          if (!item || !item.id) return
-          deletedIds[String(item.id)] = true
-          setForums(function(prev) {
-            return prev.filter(function(f) { return String(f.id) !== String(item.id) })
+        gun.get('zonefree-salons-deleted').map().on(function(ref, key) {
+          if (!key || key === '_') return
+          gun.get('zonefree-salons-deleted').get(key).once(function(item) {
+            if (!item || !item.id) return
+            deletedIds[String(item.id)] = true
+            setForums(function(prev) {
+              return prev.filter(function(f) { return String(f.id) !== String(item.id) })
+            })
           })
         })
       } catch (e) { console.warn('Gun salons-deleted subscribe error:', e) }
