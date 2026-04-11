@@ -571,7 +571,7 @@ function App() {
           })
         })
       } catch (e) { console.warn('Gun salons-deleted subscribe error:', e) }
-    }, 500)
+    }, 2000)
 
     return function() { clearTimeout(to) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
