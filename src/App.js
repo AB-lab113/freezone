@@ -492,7 +492,9 @@ function App() {
     } catch (e) { console.warn('Gun salons-deleted preload error:', e) }
 
     var NOMS_CORROMPUS = ['P', 'p', 'Est', '8', '9', '11', '12', '13',
-      'test gun3', 'test gun 3', 'test gun4', 'test gun 4', 'tg4']
+      'test gun3', 'test gun 3', 'test gun4', 'test gun 4', 'tg4',
+      'P7', 'p7', 'G5', 'g5', 'Gun 5', 'gun 5',
+      'test gun', 'Gun5', 'gun5', 'tg5']
     try {
       gun.get('zonefree-salons').map().once(function(salon) {
         if (!salon || !salon.id) return
@@ -501,6 +503,7 @@ function App() {
           /^\d+$/.test(nom) ||
           NOMS_CORROMPUS.indexOf(nom) !== -1 ||
           NOMS_CORROMPUS.indexOf(nom.toLowerCase()) !== -1
+        if (/^[A-Za-z]\d+$/.test(nom)) estCorrompu = true
         if (estCorrompu) {
           console.log('[CLEANUP] Blacklist salon corrompu:', nom, salon.id)
           gun.get('zonefree-salons-deleted').get(String(salon.id)).put({
