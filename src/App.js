@@ -1042,10 +1042,12 @@ function App() {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newTopic.title.trim()) { alert('Donnez un titre !'); return }
+    var topicId = Date.now()
     var topic = {
-      id: Date.now(), title: newTopic.title, content: newTopic.content,
+      id: topicId, title: newTopic.title, content: newTopic.content,
       author: displayName(account), pinned: false, replies: [],
-      date: new Date().toLocaleDateString('fr-FR')
+      date: new Date().toLocaleDateString('fr-FR'),
+      timestamp: topicId, forumId: activeForum.id
     }
     var upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
@@ -1056,8 +1058,8 @@ function App() {
         title: topic.title,
         author: topic.author,
         content: topic.content || '',
-        timestamp: topic.id,
-        forumId: activeForum.id
+        timestamp: topic.timestamp,
+        forumId: topic.forumId || ''
       })
     } catch (e) { console.warn('publish topic Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
