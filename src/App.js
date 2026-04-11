@@ -1979,20 +1979,29 @@ function App() {
                       f.createur === account ||
                       String(f.creator || '').toLowerCase() === String(account).toLowerCase() ||
                       String(f.auteur || '').toLowerCase() === String(account).toLowerCase()
-                    ) && (
-                      <button
-                        onClick={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
-                        onTouchEnd={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
-                        style={{
-                          marginTop: 8, fontSize: 11, color: '#ef4444',
-                          background: 'none', border: '1px solid #ef444444',
-                          borderRadius: 6, padding: '8px 14px', cursor: 'pointer',
-                          minHeight: '44px', touchAction: 'manipulation',
-                          WebkitTapHighlightColor: 'transparent'
-                        }}>
-                        🗑️ Supprimer
-                      </button>
-                    )}
+                    ) && React.createElement('button', {
+                      onClick: function(e) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        supprimerSalon(f.id)
+                      },
+                      onTouchEnd: function(e) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        supprimerSalon(f.id)
+                      },
+                      style: {
+                        background: '#ef4444', color: '#fff', border: 'none',
+                        borderRadius: '8px', padding: '12px 20px',
+                        minHeight: '48px', minWidth: '120px',
+                        fontSize: '15px', cursor: 'pointer',
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent',
+                        position: 'relative', zIndex: 1000,
+                        display: 'block', width: '100%',
+                        marginTop: 8
+                      }
+                    }, '🗑️ Supprimer')}
                   </div>
                 )})}
               </div>
