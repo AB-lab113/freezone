@@ -1241,6 +1241,8 @@ function App() {
         emoji: salon.emoji,
         creator: account,
         timestamp: Date.now()
+      }, function(ack) {
+        console.log('[GUN SALON PUB]', ack && ack.err ? 'ERREUR: ' + ack.err : 'OK id=' + salon.id)
       })
     } catch (e) { console.warn('publish salon Gun error:', e) }
   }
