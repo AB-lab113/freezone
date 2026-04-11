@@ -486,17 +486,20 @@ function App() {
   useEffect(function() {
     try {
       gun.get('zonefree-salons').map().on(function(salon, key) {
-        if (salon === null || !salon) {
-          if (key) {
+        if (!salon || salon.deleted === true) {
+          var delId = salon && salon.id ? salon.id : key
+          if (delId) {
             setForums(function(prev) {
-              return prev.filter(function(f) { return String(f.id) !== String(key) })
+              return prev.filter(function(f) { return String(f.id) !== String(delId) })
             })
           }
           return
         }
         if (!salon.id) return
-        var nomSalon = salon.name || salon.nom || ''
-        if (!nomSalon || nomSalon.trim().length < 2) return
+        var nomSalon = String(salon.name || salon.nom || '').trim()
+        if (nomSalon.length < 2) return
+        if (/^\d+$/.test(nomSalon)) return
+        if (nomSalon === 'P' || nomSalon === 'p') return
         setForums(function(prev) {
           var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
           if (existe) return prev
@@ -1168,6 +1171,8 @@ function App() {
       creator: account
     }
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
+    var nomValide = String(salon.name || '').trim()
+    if (nomValide.length < 2) return
     try {
       gun.get('zonefree-salons').get(String(salon.id)).put({
         id: salon.id,
@@ -1260,7 +1265,10 @@ function App() {
     setForums(forums.filter(function(f) { return f.id !== forumId }))
     if (activeForum?.id === forumId) goHome()
     try {
-      gun.get('zonefree-salons').get(String(forumId)).put(null)
+      gun.get('zonefree-salons').get(String(forumId)).put({
+        id: forumId,
+        deleted: true
+      })
     } catch (e) { console.warn('delete salon Gun error:', e) }
   }
 
