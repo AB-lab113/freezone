@@ -453,12 +453,14 @@ function App() {
 
   useEffect(function() {
     try {
-      gun.get('zonefree-topics').map().on(function(topic) {
+      gun.get('zonefree-topics').map().on(function(topic, key) {
         if (!topic || !topic.id || !topic.title) return
+        var fid = topic.forumId || topic.forum_id || ''
+        if (!fid) return
         setForums(function(prev) {
           var changed = false
           var next = prev.map(function(f) {
-            if (!topic.forumId || f.id !== topic.forumId) return f
+            if (String(f.id) !== String(fid)) return f
             var existe = (f.topics || []).some(function(t) { return String(t.id) === String(topic.id) })
             if (existe) return f
             changed = true
@@ -1053,6 +1055,7 @@ function App() {
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     try {
+      console.log('[GUN TOPIC] publication', topic.id, topic.title)
       gun.get('zonefree-topics').get(String(topic.id)).put({
         id: topic.id,
         title: topic.title,
@@ -1060,6 +1063,8 @@ function App() {
         content: topic.content || '',
         timestamp: topic.timestamp,
         forumId: topic.forumId || ''
+      }, function(ack) {
+        console.log('[GUN TOPIC] ack', ack)
       })
     } catch (e) { console.warn('publish topic Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
@@ -1765,7 +1770,14 @@ function App() {
                       <span>{f.topics.reduce(function(a, t) { return a + t.replies.length }, 0)} réponses</span>
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
-                    {account && estAbonne && f.creator === account && (
+                    {account && estAbonne && (
+                      f.creator === account ||
+                      f.auteur === account ||
+                      f.author === account ||
+                      f.createur === account ||
+                      String(f.creator || '').toLowerCase() === String(account).toLowerCase() ||
+                      String(f.auteur || '').toLowerCase() === String(account).toLowerCase()
+                    ) && (
                       <button
                         onClick={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
                         onTouchEnd={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
