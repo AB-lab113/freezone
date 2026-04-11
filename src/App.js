@@ -505,6 +505,66 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(function() {
+    try {
+      gun.get('zonefree-reactions').map().on(function(reaction) {
+        if (!reaction || !reaction.id) return
+        var rid = String(reaction.id)
+        if (typeof reaction.likes === 'number') {
+          setLikes(function(prev) {
+            var cur = prev[rid] || { count: 0, likedBy: [] }
+            if (cur.count === reaction.likes) return prev
+            var next = Object.assign({}, prev)
+            next[rid] = Object.assign({}, cur, { count: reaction.likes })
+            return next
+          })
+        }
+        if (typeof reaction.pinned === 'boolean' && reaction.topicId != null) {
+          setForums(function(prev) {
+            var changed = false
+            var next = prev.map(function(f) {
+              if (!f.topics) return f
+              var touched = false
+              var newTopics = f.topics.map(function(t) {
+                if (String(t.id) !== String(reaction.topicId)) return t
+                if (t.pinned === reaction.pinned) return t
+                touched = true
+                return Object.assign({}, t, { pinned: reaction.pinned })
+              })
+              if (touched) { changed = true; return Object.assign({}, f, { topics: newTopics }) }
+              return f
+            })
+            return changed ? next : prev
+          })
+        }
+      })
+    } catch (e) { console.warn('Gun reactions subscribe error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(function() {
+    if (!activeConversation || !activeConversation.key) return
+    var k = activeConversation.key
+    setMessages(function(prev) {
+      var changed = false
+      var next = prev.map(function(c) {
+        if (c.key !== k) return c
+        var touched = false
+        var newMsgs = (c.msgs || []).map(function(m) {
+          if (m && !m.read && isMe(m.to)) {
+            touched = true
+            return Object.assign({}, m, { read: true })
+          }
+          return m
+        })
+        if (touched) { changed = true; return Object.assign({}, c, { msgs: newMsgs }) }
+        return c
+      })
+      return changed ? next : prev
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation])
+
   useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
   useEffect(() => {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
@@ -662,13 +722,22 @@ function App() {
     if (!estAbonne) { alert('Abonnement requis pour liker !'); return }
     var cur = likes[key] || { count: 0, likedBy: [] }
     var has = cur.likedBy.includes(account)
+    var newCount = has ? cur.count - 1 : cur.count + 1
     setLikes({
       ...likes,
       [key]: {
-        count: has ? cur.count - 1 : cur.count + 1,
+        count: newCount,
         likedBy: has ? cur.likedBy.filter(function(a) { return a !== account }) : [...cur.likedBy, account]
       }
     })
+    try {
+      gun.get('zonefree-reactions').get(String(key)).put({
+        id: String(key),
+        likes: newCount,
+        pinned: false,
+        forumId: activeForum ? activeForum.id : ''
+      })
+    } catch (e) { console.warn('publish reaction Gun error:', e) }
   }
   var getLike = (key) => {
     var l = likes[key] || { count: 0, likedBy: [] }
@@ -1146,10 +1215,25 @@ function App() {
 
   var togglePin = (topicId) => {
     if (!estAbonne) return
+    var newPinned = false
     var upd = forums.map(f => f.id === activeForum.id
-      ? { ...f, topics: f.topics.map(t => t.id === topicId ? { ...t, pinned: !t.pinned } : t) }
+      ? { ...f, topics: f.topics.map(function(t) {
+          if (t.id !== topicId) return t
+          newPinned = !t.pinned
+          return Object.assign({}, t, { pinned: newPinned })
+        }) }
       : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
+    try {
+      var reactionKey = activeForum.id + '-' + topicId
+      gun.get('zonefree-reactions').get(String(reactionKey)).put({
+        id: String(reactionKey),
+        topicId: topicId,
+        likes: (likes[reactionKey] && likes[reactionKey].count) || 0,
+        pinned: newPinned,
+        forumId: activeForum.id
+      })
+    } catch (e) { console.warn('publish pin Gun error:', e) }
   }
 
   var supprimerSalon = (forumId) => {
@@ -1927,7 +2011,16 @@ function App() {
       {/* ══════════════ PAGE TOPIC ══════════════ */}
       {page === 'topic' && activeTopic && (
         <div className="forum-page">
-          <button className="back-btn" onClick={goForum}>← Retour {activeForum?.emoji} {activeForum?.name}</button>
+          {React.createElement('button', {
+            className: 'back-btn',
+            onClick: function(e) { e.preventDefault(); e.stopPropagation(); goForum() },
+            onTouchEnd: function(e) { e.preventDefault(); e.stopPropagation(); goForum() },
+            style: {
+              minHeight: '44px', touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative', zIndex: 999
+            }
+          }, '← Retour ' + ((activeForum && activeForum.emoji) || '') + ' ' + ((activeForum && activeForum.name) || ''))}
           <div style={{ borderRadius: 14, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1' }}>
             <h2 style={{ fontSize: 22, marginBottom: 12 }}>
               {activeTopic.pinned && <span style={{ marginRight: 8 }}>📌</span>}
