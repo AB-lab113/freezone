@@ -453,7 +453,7 @@ function App() {
 
   useEffect(function() {
     try {
-      gun.get('zonefree-topics').map().on(function(topic, key) {
+      gun.get('zonefree-topics').map().on(function(topic) {
         if (!topic || !topic.id || !topic.title) return
         var fid = topic.forumId || topic.forum_id || ''
         if (!fid) return
@@ -479,6 +479,29 @@ function App() {
         })
       })
     } catch (e) { console.warn('Gun topics subscribe error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(function() {
+    try {
+      gun.get('zonefree-salons').map().on(function(salon) {
+        if (!salon || !salon.id) return
+        var nom = salon.name || salon.nom || ''
+        if (!nom) return
+        setForums(function(prev) {
+          var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
+          if (existe) return prev
+          return prev.concat([Object.assign({}, {
+            id: salon.id,
+            name: nom,
+            emoji: salon.emoji || salon.icon || '💬',
+            description: salon.description || '',
+            creator: salon.creator || '',
+            topics: []
+          })])
+        })
+      })
+    } catch (e) { console.warn('Gun salons subscribe error:', e) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -812,6 +835,32 @@ function App() {
   function ouvrirConversation(conv) {
     setActiveConversation(conv)
     setPage('conversation')
+    setMessages(function(prev) {
+      return prev.map(function(c) {
+        if (!conv || c.key !== conv.key) return c
+        var changed = false
+        var newMsgs = (c.msgs || []).map(function(m) {
+          if (m && !m.read && isMe(m.to)) {
+            changed = true
+            return Object.assign({}, m, { read: true })
+          }
+          return m
+        })
+        return changed ? Object.assign({}, c, { msgs: newMsgs }) : c
+      })
+    })
+    setActiveConversation(function(prev) {
+      if (!prev || !conv || prev.key !== conv.key) return prev
+      var changed = false
+      var newMsgs = (prev.msgs || []).map(function(m) {
+        if (m && !m.read && isMe(m.to)) {
+          changed = true
+          return Object.assign({}, m, { read: true })
+        }
+        return m
+      })
+      return changed ? Object.assign({}, prev, { msgs: newMsgs }) : prev
+    })
     if (!conv || !conv.key) return
     function onGunMsg(msg) {
       if (!msg || !msg.id) return
@@ -1038,6 +1087,16 @@ function App() {
       creator: account
     }
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
+    try {
+      gun.get('zonefree-salons').get(String(salon.id)).put({
+        id: salon.id,
+        name: salon.name,
+        description: salon.description,
+        emoji: salon.emoji,
+        creator: account,
+        timestamp: Date.now()
+      })
+    } catch (e) { console.warn('publish salon Gun error:', e) }
   }
 
   var creerTopic = async () => {
