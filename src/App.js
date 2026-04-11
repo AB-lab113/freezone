@@ -221,6 +221,7 @@ function App() {
   // eslint-disable-next-line no-unused-vars
   var imageInputRef = useRef(null)
   var gunSubscribed = useRef({})
+  var activeConvKeyRef = useRef(null)
 
   // ─── NACL E2E ───
   var [naclKeyPair, setNaclKeyPair] = useState(null)
@@ -484,16 +485,24 @@ function App() {
 
   useEffect(function() {
     try {
-      gun.get('zonefree-salons').map().on(function(salon) {
-        if (!salon || !salon.id) return
-        var nom = salon.name || salon.nom || ''
-        if (!nom) return
+      gun.get('zonefree-salons').map().on(function(salon, key) {
+        if (salon === null || !salon) {
+          if (key) {
+            setForums(function(prev) {
+              return prev.filter(function(f) { return String(f.id) !== String(key) })
+            })
+          }
+          return
+        }
+        if (!salon.id) return
+        var nomSalon = salon.name || salon.nom || ''
+        if (!nomSalon || nomSalon.trim().length < 2) return
         setForums(function(prev) {
           var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
           if (existe) return prev
           return prev.concat([Object.assign({}, {
             id: salon.id,
-            name: nom,
+            name: nomSalon,
             emoji: salon.emoji || salon.icon || '💬',
             description: salon.description || '',
             creator: salon.creator || '',
@@ -902,6 +911,7 @@ function App() {
   }
 
   function ouvrirConversation(conv) {
+    activeConvKeyRef.current = conv ? conv.key : null
     setActiveConversation(conv)
     setPage('conversation')
     setMessages(function(prev) {
@@ -935,12 +945,14 @@ function App() {
       if (!msg || !msg.id) return
       if (!msg.content && msg.content !== '') return
       var msgId = String(msg.id)
+      var convOuverte = activeConvKeyRef.current === conv.key
+      var incoming = Object.assign({}, msg, convOuverte ? { read: true } : {})
       setMessages(function(prev) {
         return prev.map(function(c) {
           if (c.key !== conv.key) return c
           var existe = c.msgs && c.msgs.some(function(m) { return String(m.id) === msgId })
           if (existe) return c
-          var newMsgs = (c.msgs || []).concat([msg])
+          var newMsgs = (c.msgs || []).concat([incoming])
           newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
           return Object.assign({}, c, { msgs: newMsgs })
         })
@@ -949,7 +961,7 @@ function App() {
         if (!prev || prev.key !== conv.key) return prev
         var existe = prev.msgs && prev.msgs.some(function(m) { return String(m.id) === msgId })
         if (existe) return prev
-        var newMsgs = (prev.msgs || []).concat([msg])
+        var newMsgs = (prev.msgs || []).concat([incoming])
         newMsgs.sort(function(a, b) { return (a.timestamp || 0) - (b.timestamp || 0) })
         return Object.assign({}, prev, { msgs: newMsgs })
       })
@@ -972,7 +984,7 @@ function App() {
   }
 
   var unreadCount = account
-    ? messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return isMe(m.to) && !m.read }).length }, 0)
+    ? Math.min(9, messages.reduce(function(t, c) { return t + c.msgs.filter(function(m) { return isMe(m.to) && !m.read }).length }, 0))
     : 0
 
    // ═══════════════════ NACL E2E ═══════════════════
@@ -1247,6 +1259,9 @@ function App() {
     if (!window.confirm(`Supprimer le salon "${salon.name}" ?`)) return
     setForums(forums.filter(function(f) { return f.id !== forumId }))
     if (activeForum?.id === forumId) goHome()
+    try {
+      gun.get('zonefree-salons').get(String(forumId)).put(null)
+    } catch (e) { console.warn('delete salon Gun error:', e) }
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
@@ -1537,11 +1552,13 @@ function App() {
             onClick: function(e) {
               e.preventDefault()
               e.stopPropagation()
+              activeConvKeyRef.current = null
               setPage('messages')
               setActiveConversation(null)
             },
             onTouchEnd: function(e) {
               e.preventDefault()
+              activeConvKeyRef.current = null
               setPage('messages')
               setActiveConversation(null)
             },
@@ -1943,8 +1960,19 @@ function App() {
 
       {/* ══════════════ PAGE FORUM ══════════════ */}
       {page === 'forum' && activeForum && (
-        <div className="forum-page">
-          <button className="back-btn" onClick={goHome}>← Retour aux forums</button>
+        <div className="forum-page" style={{ position: 'relative', overflow: 'visible' }}>
+          <div style={{ position: 'relative', zIndex: 1000, display: 'block', overflow: 'visible' }}>
+          {React.createElement('button', {
+            className: 'back-btn',
+            onClick: function(e) { e.preventDefault(); e.stopPropagation(); goHome() },
+            onTouchEnd: function(e) { e.preventDefault(); e.stopPropagation(); goHome() },
+            style: {
+              minHeight: '44px', touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              position: 'relative', zIndex: 1000
+            }
+          }, '← Retour aux forums')}
+          </div>
           <div className="forum-header">
             <h2>{activeForum.emoji} {activeForum.name}</h2>
             <p style={{ opacity: 0.6, marginTop: 6 }}>{activeForum.description}</p>
@@ -2010,7 +2038,8 @@ function App() {
 
       {/* ══════════════ PAGE TOPIC ══════════════ */}
       {page === 'topic' && activeTopic && (
-        <div className="forum-page">
+        <div className="forum-page" style={{ position: 'relative', overflow: 'visible' }}>
+          <div style={{ position: 'relative', zIndex: 1000, display: 'block', overflow: 'visible' }}>
           {React.createElement('button', {
             className: 'back-btn',
             onClick: function(e) { e.preventDefault(); e.stopPropagation(); goForum() },
@@ -2018,9 +2047,10 @@ function App() {
             style: {
               minHeight: '44px', touchAction: 'manipulation',
               WebkitTapHighlightColor: 'transparent',
-              position: 'relative', zIndex: 999
+              position: 'relative', zIndex: 1000
             }
           }, '← Retour ' + ((activeForum && activeForum.emoji) || '') + ' ' + ((activeForum && activeForum.name) || ''))}
+          </div>
           <div style={{ borderRadius: 14, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1' }}>
             <h2 style={{ fontSize: 22, marginBottom: 12 }}>
               {activeTopic.pinned && <span style={{ marginRight: 8 }}>📌</span>}
