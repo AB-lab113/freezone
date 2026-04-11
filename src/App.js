@@ -484,36 +484,48 @@ function App() {
   }, [])
 
   useEffect(function() {
+    var deletedIds = {}
     try {
-      gun.get('zonefree-salons').map().on(function(salon, key) {
-        if (!salon || salon.deleted === true) {
-          var delId = salon && salon.id ? salon.id : key
-          if (delId) {
-            setForums(function(prev) {
-              return prev.filter(function(f) { return String(f.id) !== String(delId) })
-            })
-          }
-          return
-        }
-        if (!salon.id) return
-        var nomSalon = String(salon.name || salon.nom || '').trim()
-        if (nomSalon.length < 2) return
-        if (/^\d+$/.test(nomSalon)) return
-        if (nomSalon === 'P' || nomSalon === 'p') return
-        setForums(function(prev) {
-          var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
-          if (existe) return prev
-          return prev.concat([Object.assign({}, {
-            id: salon.id,
-            name: nomSalon,
-            emoji: salon.emoji || salon.icon || '💬',
-            description: salon.description || '',
-            creator: salon.creator || '',
-            topics: []
-          })])
-        })
+      gun.get('zonefree-salons-deleted').map().once(function(item) {
+        if (item && item.id) deletedIds[String(item.id)] = true
       })
-    } catch (e) { console.warn('Gun salons subscribe error:', e) }
+    } catch (e) { console.warn('Gun salons-deleted preload error:', e) }
+
+    var to = setTimeout(function() {
+      try {
+        gun.get('zonefree-salons').map().on(function(salon) {
+          if (!salon || !salon.id) return
+          if (deletedIds[String(salon.id)]) return
+          var nomSalon = String(salon.name || salon.nom || '').trim()
+          if (nomSalon.length < 2) return
+          if (/^\d+$/.test(nomSalon)) return
+          setForums(function(prev) {
+            var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
+            if (existe) return prev
+            return prev.concat([Object.assign({}, {
+              id: salon.id,
+              name: nomSalon,
+              emoji: salon.emoji || salon.icon || '💬',
+              description: salon.description || '',
+              creator: salon.creator || '',
+              topics: []
+            })])
+          })
+        })
+      } catch (e) { console.warn('Gun salons subscribe error:', e) }
+
+      try {
+        gun.get('zonefree-salons-deleted').map().on(function(item) {
+          if (!item || !item.id) return
+          deletedIds[String(item.id)] = true
+          setForums(function(prev) {
+            return prev.filter(function(f) { return String(f.id) !== String(item.id) })
+          })
+        })
+      } catch (e) { console.warn('Gun salons-deleted subscribe error:', e) }
+    }, 500)
+
+    return function() { clearTimeout(to) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1172,7 +1184,7 @@ function App() {
     }
     setForums([...forums, salon]); setShowNewSalon(false); setNewSalon({ emoji: '', name: '', description: '' })
     var nomValide = String(salon.name || '').trim()
-    if (nomValide.length < 2) return
+    if (nomValide.length < 2 || /^\d+$/.test(nomValide)) return
     try {
       gun.get('zonefree-salons').get(String(salon.id)).put({
         id: salon.id,
@@ -1265,9 +1277,9 @@ function App() {
     setForums(forums.filter(function(f) { return f.id !== forumId }))
     if (activeForum?.id === forumId) goHome()
     try {
-      gun.get('zonefree-salons').get(String(forumId)).put({
+      gun.get('zonefree-salons-deleted').get(String(forumId)).put({
         id: forumId,
-        deleted: true
+        deletedAt: Date.now()
       })
     } catch (e) { console.warn('delete salon Gun error:', e) }
   }
