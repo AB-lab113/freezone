@@ -1051,14 +1051,13 @@ function App() {
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     try {
-      gun.get('zonefree-topics').set({
+      gun.get('zonefree-topics').get(String(topic.id)).put({
         id: topic.id,
         title: topic.title,
         author: topic.author,
-        content: topic.content,
+        content: topic.content || '',
         timestamp: topic.id,
-        forumId: activeForum.id,
-        date: topic.date
+        forumId: activeForum.id
       })
     } catch (e) { console.warn('publish topic Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
@@ -1765,8 +1764,16 @@ function App() {
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
                     {account && estAbonne && f.creator === account && (
-                      <button onClick={function(e) { e.stopPropagation(); supprimerSalon(f.id) }}
-                        style={{ marginTop: 8, fontSize: 11, color: '#ef4444', background: 'none', border: '1px solid #ef444444', borderRadius: 6, padding: '3px 10px', cursor: 'pointer' }}>
+                      <button
+                        onClick={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
+                        onTouchEnd={function(e) { e.preventDefault(); e.stopPropagation(); supprimerSalon(f.id) }}
+                        style={{
+                          marginTop: 8, fontSize: 11, color: '#ef4444',
+                          background: 'none', border: '1px solid #ef444444',
+                          borderRadius: 6, padding: '8px 14px', cursor: 'pointer',
+                          minHeight: '44px', touchAction: 'manipulation',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}>
                         🗑️ Supprimer
                       </button>
                     )}
