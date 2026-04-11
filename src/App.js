@@ -520,6 +520,26 @@ function App() {
 
     var to = setTimeout(function() {
       try {
+        gun.get('zonefree-salons').map().once(function(ref, key) {
+          if (!ref || !key || key === '_') return
+          gun.get('zonefree-salons').get(key).once(function(salon) {
+            if (!salon || !salon.id) return
+            if (deletedIds[String(salon.id)]) return
+            var nomSalon = String(salon.name || salon.nom || '').trim()
+            if (nomSalon.length < 2) return
+            if (/^\d+$/.test(nomSalon)) return
+            if (/^[A-Za-z]{1,2}$/.test(nomSalon)) return
+            if (/^[A-Za-z]\d+$/.test(nomSalon)) return
+            setForums(function(prev) {
+              var existe = prev.some(function(f) { return String(f.id) === String(salon.id) })
+              if (existe) return prev
+              return prev.concat([Object.assign({}, salon, { topics: [] })])
+            })
+          })
+        })
+      } catch (e) { console.warn('Gun salons initial load error:', e) }
+
+      try {
         gun.get('zonefree-salons').map().on(function(ref, key) {
           if (!ref || !key || key === '_') return
           gun.get('zonefree-salons').get(key).once(function(salon) {
