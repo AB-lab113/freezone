@@ -2033,7 +2033,34 @@ function App() {
           <div className="forum-header">
             <h2>{activeForum.emoji} {activeForum.name}</h2>
             <p style={{ opacity: 0.6, marginTop: 6 }}>{activeForum.description}</p>
-            <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+              <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
+              {(function() {
+                var peutSupprimer = activeForum.creator && account &&
+                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase()
+                if (!peutSupprimer) return null
+                return React.createElement('button', {
+                  onClick: function(e) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (window.confirm('Supprimer ce salon ?')) {
+                      supprimerSalon(activeForum.id)
+                      setActiveForum(null)
+                    }
+                  },
+                  onPointerUp: function(e) {
+                    e.stopPropagation()
+                  },
+                  style: {
+                    background: '#ef4444', color: '#fff', border: 'none',
+                    borderRadius: '8px', padding: '8px 16px',
+                    minHeight: '44px', fontSize: '14px', cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }
+                }, '🗑️ Supprimer ce salon')
+              })()}
+            </div>
           </div>
           <div className="search-container" style={{ margin: '0 0 16px' }}>
             <span className="search-icon">🔍</span>
