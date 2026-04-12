@@ -1298,11 +1298,14 @@ function App() {
       localStorage.setItem('zonefree-suppressed', JSON.stringify(suppressions))
     } catch (e) {}
     if (activeForum && String(activeForum.id) === String(forumId)) goHome()
+    console.log('[DELETE SALON]', forumId)
     try {
       gun.get('zonefree-registry').get(String(forumId)).put({
-        id: forumId, deleted: true, name: 'deleted'
+        id: String(forumId), name: 'deleted', deleted: true
+      }, function(ack) {
+        console.log('[DELETE ACK]', ack)
       })
-    } catch (e) {}
+    } catch (e) { console.warn('[DELETE ERROR]', e) }
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
