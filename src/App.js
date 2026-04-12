@@ -457,22 +457,35 @@ function App() {
 
   function handleGunReply(rep, fid) {
     if (!rep || !rep.id || !rep.content || !rep.topicId) return
+    function insertReply(topics) {
+      return (topics || []).map(function(t) {
+        if (String(t.id) !== String(rep.topicId)) return t
+        var existe = (t.replies || []).some(function(r) { return String(r.id) === String(rep.id) })
+        if (existe) return t
+        return Object.assign({}, t, { replies: (t.replies || []).concat([rep]) })
+      })
+    }
     setForums(function(prev) {
       var changed = false
       var next = prev.map(function(f) {
         if (String(f.id) !== String(fid)) return f
-        var topicChanged = false
-        var newTopics = (f.topics || []).map(function(t) {
-          if (String(t.id) !== String(rep.topicId)) return t
-          var existe = (t.replies || []).some(function(r) { return String(r.id) === String(rep.id) })
-          if (existe) return t
-          topicChanged = true
-          return Object.assign({}, t, { replies: (t.replies || []).concat([rep]) })
-        })
-        if (topicChanged) { changed = true; return Object.assign({}, f, { topics: newTopics }) }
+        var newTopics = insertReply(f.topics)
+        if (newTopics !== f.topics) { changed = true; return Object.assign({}, f, { topics: newTopics }) }
         return f
       })
       return changed ? next : prev
+    })
+    setActiveForum(function(prev) {
+      if (!prev || String(prev.id) !== String(fid)) return prev
+      var updatedTopics = insertReply(prev.topics)
+      if (updatedTopics === prev.topics) return prev
+      return Object.assign({}, prev, { topics: updatedTopics })
+    })
+    setActiveTopic(function(prev) {
+      if (!prev || String(prev.id) !== String(rep.topicId)) return prev
+      var existe = (prev.replies || []).some(function(r) { return String(r.id) === String(rep.id) })
+      if (existe) return prev
+      return Object.assign({}, prev, { replies: (prev.replies || []).concat([rep]) })
     })
   }
 
