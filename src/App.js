@@ -1267,12 +1267,6 @@ function App() {
     if (!account || !estAbonne) return
     var salon = forums.find(function(f) { return String(f.id) === String(forumId) })
     if (!salon) return
-    var creatorLow = String(salon.creator || '').toLowerCase()
-    var accountLow = String(account).toLowerCase()
-    if (creatorLow && creatorLow !== accountLow) {
-      alert('Vous ne pouvez supprimer que vos propres salons.')
-      return
-    }
     if (!window.confirm('Supprimer le salon "' + (salon.name || '') + '" ?')) return
     setForums(function(prev) {
       return prev.filter(function(f) { return String(f.id) !== String(forumId) })
@@ -1957,14 +1951,11 @@ function App() {
                       <span>{f.topics.reduce(function(a, t) { return a + t.replies.length }, 0)} réponses</span>
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
-                    {account && estAbonne && (
-                      f.creator === account ||
-                      f.auteur === account ||
-                      f.author === account ||
-                      f.createur === account ||
-                      String(f.creator || '').toLowerCase() === String(account).toLowerCase() ||
-                      String(f.auteur || '').toLowerCase() === String(account).toLowerCase()
-                    ) && React.createElement('button', {
+                    {(function() {
+                      var peutSupprimer = f.creator && account &&
+                        String(f.creator).toLowerCase() === String(account).toLowerCase()
+                      return peutSupprimer
+                    })() && React.createElement('button', {
                       onClick: function(e) {
                         e.preventDefault()
                         e.stopPropagation()
