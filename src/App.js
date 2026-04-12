@@ -453,6 +453,43 @@ function App() {
   }, [])
 
   var topicSubscribed = useRef({})
+  var replySubscribed = useRef({})
+
+  function handleGunReply(rep, fid) {
+    if (!rep || !rep.id || !rep.content || !rep.topicId) return
+    setForums(function(prev) {
+      var changed = false
+      var next = prev.map(function(f) {
+        if (String(f.id) !== String(fid)) return f
+        var topicChanged = false
+        var newTopics = (f.topics || []).map(function(t) {
+          if (String(t.id) !== String(rep.topicId)) return t
+          var existe = (t.replies || []).some(function(r) { return String(r.id) === String(rep.id) })
+          if (existe) return t
+          topicChanged = true
+          return Object.assign({}, t, { replies: (t.replies || []).concat([rep]) })
+        })
+        if (topicChanged) { changed = true; return Object.assign({}, f, { topics: newTopics }) }
+        return f
+      })
+      return changed ? next : prev
+    })
+  }
+
+  function subscribeRepliesForTopic(fid, topicId) {
+    var rkey = String(fid) + '-' + String(topicId)
+    if (replySubscribed.current[rkey]) return
+    replySubscribed.current[rkey] = true
+    try {
+      gun.get('zonefree-replies-' + rkey).map().once(function(rep) {
+        if (rep) handleGunReply(rep, fid)
+      })
+      gun.get('zonefree-replies-' + rkey).map().on(function(rep) {
+        if (rep) handleGunReply(rep, fid)
+      })
+    } catch (e) { console.warn('Gun replies subscribe error:', e) }
+  }
+
   function handleGunTopic(topic, fid) {
     if (!topic || !topic.id || !topic.title) return
     if (topic.deleted) return
@@ -476,7 +513,9 @@ function App() {
       })
       return changed ? next : prev
     })
+    subscribeRepliesForTopic(fid, topic.id)
   }
+
   function subscribeTopicsForForum(forumId) {
     var fid = String(forumId)
     if (topicSubscribed.current[fid]) return
@@ -1261,14 +1300,28 @@ function App() {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newReply.trim()) { alert('Écrivez un message !'); return }
-    var reply = { id: Date.now(), author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
+    var replyId = Date.now()
+    var reply = { id: replyId, author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
     var updTopic = { ...activeTopic, replies: [...activeTopic.replies, reply] }
     var upd = forums.map(f => f.id === activeForum.id
       ? { ...f, topics: f.topics.map(t => t.id === activeTopic.id ? updTopic : t) }
       : f)
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setActiveTopic(updTopic); setNewReply('')
-    envoyerNotif('💬 Nouvelle réponse', `Dans : ${activeTopic.title}`)
+    envoyerNotif('💬 Nouvelle réponse', 'Dans : ' + activeTopic.title)
+    try {
+      var reponseKey = String(activeForum.id) + '-' + String(activeTopic.id)
+      gun.get('zonefree-replies-' + reponseKey).get(String(replyId)).put({
+        id: replyId,
+        topicId: activeTopic.id,
+        forumId: String(activeForum.id),
+        content: newReply,
+        author: displayName(account),
+        authorFull: String(account).toLowerCase(),
+        timestamp: replyId,
+        date: new Date().toLocaleDateString('fr-FR')
+      })
+    } catch (e) { console.warn('publish reply Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
