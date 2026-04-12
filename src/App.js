@@ -1282,31 +1282,23 @@ function App() {
     } catch (e) { console.warn('publish pin Gun error:', e) }
   }
 
-  var supprimerSalon = (forumId) => {
-    alert('supprimerSalon appelé: ' + String(forumId))
-    if (!account || !estAbonne) return
-    var salon = forums.find(function(f) { return String(f.id) === String(forumId) })
-    if (!salon) return
-    if (!window.confirm('Supprimer le salon "' + (salon.name || '') + '" ?')) return
+  var supprimerSalon = function(forumId) {
     setForums(function(prev) {
       var nouveaux = prev.filter(function(f) { return String(f.id) !== String(forumId) })
       try { localStorage.setItem('zonefree-forums', JSON.stringify(nouveaux)) } catch (e) {}
       return nouveaux
     })
-    try {
-      var suppressions = JSON.parse(localStorage.getItem('zonefree-suppressed') || '[]')
-      suppressions.push(String(forumId))
-      localStorage.setItem('zonefree-suppressed', JSON.stringify(suppressions))
-    } catch (e) {}
+    var suppressed = JSON.parse(localStorage.getItem('zonefree-suppressed') || '[]')
+    if (suppressed.indexOf(String(forumId)) === -1) {
+      suppressed.push(String(forumId))
+      localStorage.setItem('zonefree-suppressed', JSON.stringify(suppressed))
+    }
     if (activeForum && String(activeForum.id) === String(forumId)) goHome()
-    console.log('[DELETE SALON]', forumId)
-    try {
-      gun.get('zonefree-registry').get(String(forumId)).put({
-        id: String(forumId), name: 'deleted', deleted: true
-      }, function(ack) {
-        console.log('[DELETE ACK]', ack)
-      })
-    } catch (e) { console.warn('[DELETE ERROR]', e) }
+    gun.get('zonefree-registry').get(String(forumId)).put({
+      id: String(forumId), name: 'deleted', deleted: true
+    }, function(ack) {
+      console.log('[DELETE ACK]', ack)
+    })
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
@@ -2044,10 +2036,8 @@ function App() {
                   onClick: function(e) {
                     e.preventDefault()
                     e.stopPropagation()
-                    if (window.confirm('Supprimer ce salon ?')) {
-                      supprimerSalon(activeForum.id)
-                      setActiveForum(null)
-                    }
+                    supprimerSalon(activeForum.id)
+                    setActiveForum(null)
                   },
                   onPointerUp: function(e) {
                     e.stopPropagation()
