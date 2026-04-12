@@ -1283,6 +1283,7 @@ function App() {
   }
 
   var supprimerSalon = (forumId) => {
+    alert('supprimerSalon appelé: ' + String(forumId))
     if (!account || !estAbonne) return
     var salon = forums.find(function(f) { return String(f.id) === String(forumId) })
     if (!salon) return
