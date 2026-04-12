@@ -452,36 +452,44 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(function() {
-    try {
-      gun.get('zonefree-topics').map().on(function(topic) {
-        if (!topic || !topic.id || !topic.title) return
-        var fid = topic.forumId || topic.forum_id || ''
-        if (!fid) return
-        setForums(function(prev) {
-          var changed = false
-          var next = prev.map(function(f) {
-            if (String(f.id) !== String(fid)) return f
-            var existe = (f.topics || []).some(function(t) { return String(t.id) === String(topic.id) })
-            if (existe) return f
-            changed = true
-            var newTopic = Object.assign({}, {
-              id: topic.id,
-              title: topic.title,
-              content: topic.content || '',
-              author: topic.author || '',
-              pinned: false,
-              replies: [],
-              date: topic.date || new Date().toLocaleDateString('fr-FR')
-            })
-            return Object.assign({}, f, { topics: [newTopic].concat(f.topics || []) })
-          })
-          return changed ? next : prev
+  var topicSubscribed = useRef({})
+  function handleGunTopic(topic, fid) {
+    if (!topic || !topic.id || !topic.title) return
+    if (topic.deleted) return
+    setForums(function(prev) {
+      var changed = false
+      var next = prev.map(function(f) {
+        if (String(f.id) !== String(fid)) return f
+        var existe = (f.topics || []).some(function(t) { return String(t.id) === String(topic.id) })
+        if (existe) return f
+        changed = true
+        var newTopic = Object.assign({}, {
+          id: topic.id,
+          title: topic.title,
+          content: topic.content || '',
+          author: topic.author || '',
+          pinned: false,
+          replies: [],
+          date: topic.date || new Date().toLocaleDateString('fr-FR')
         })
+        return Object.assign({}, f, { topics: [newTopic].concat(f.topics || []) })
+      })
+      return changed ? next : prev
+    })
+  }
+  function subscribeTopicsForForum(forumId) {
+    var fid = String(forumId)
+    if (topicSubscribed.current[fid]) return
+    topicSubscribed.current[fid] = true
+    try {
+      gun.get('zonefree-topics-' + fid).map().once(function(topic) {
+        if (topic) handleGunTopic(topic, fid)
+      })
+      gun.get('zonefree-topics-' + fid).map().on(function(topic) {
+        if (topic) handleGunTopic(topic, fid)
       })
     } catch (e) { console.warn('Gun topics subscribe error:', e) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
 
   useEffect(function() {
     try {
@@ -540,6 +548,13 @@ function App() {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(function() {
+    forums.forEach(function(f) {
+      if (f && f.id) subscribeTopicsForForum(f.id)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forums])
 
   useEffect(function() {
     try {
@@ -1146,7 +1161,7 @@ function App() {
   }
 
   // ═══════════════════ NAVIGATION ═══════════════════
-  var openForum = (f) => { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum') }
+  var openForum = (f) => { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum'); subscribeTopicsForForum(f.id) }
   var openTopic = (t) => { setActiveTopic(t); setPage('topic') }
   var goHome = () => { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
   var goForum = () => { setPage('forum'); setActiveTopic(null) }
@@ -1229,16 +1244,14 @@ function App() {
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     try {
-      console.log('[GUN TOPIC] publication', topic.id, topic.title)
-      gun.get('zonefree-topics').get(String(topic.id)).put({
+      gun.get('zonefree-topics-' + String(activeForum.id)).get(String(topic.id)).put({
         id: topic.id,
         title: topic.title,
         author: topic.author,
         content: topic.content || '',
         timestamp: topic.timestamp,
-        forumId: topic.forumId || ''
-      }, function(ack) {
-        console.log('[GUN TOPIC] ack', ack)
+        forumId: String(activeForum.id),
+        deleted: false
       })
     } catch (e) { console.warn('publish topic Gun error:', e) }
     await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
