@@ -1940,7 +1940,10 @@ function App() {
             : <div className="forums-grid">
                 {forumsFiltered.map(function(f) { return (
                   <div key={f.id} className="forum-card" onClick={function(e) {
-                    if (e.target && e.target.closest && e.target.closest('button')) return
+                    if (e.target && e.target.closest && (
+                      e.target.closest('button') ||
+                      e.target.closest('[data-action]')
+                    )) return
                     openForum(f)
                   }}>
                     <div className="forum-emoji">{f.emoji}</div>
@@ -1956,12 +1959,13 @@ function App() {
                         String(f.creator).toLowerCase() === String(account).toLowerCase()
                       return peutSupprimer
                     })() && React.createElement('button', {
-                      onClick: function(e) {
+                      'data-action': 'supprimer',
+                      onPointerUp: function(e) {
                         e.preventDefault()
                         e.stopPropagation()
                         supprimerSalon(f.id)
                       },
-                      onTouchEnd: function(e) {
+                      onClick: function(e) {
                         e.preventDefault()
                         e.stopPropagation()
                         supprimerSalon(f.id)
@@ -1969,12 +1973,12 @@ function App() {
                       style: {
                         background: '#ef4444', color: '#fff', border: 'none',
                         borderRadius: '8px', padding: '12px 20px',
-                        minHeight: '48px', minWidth: '120px',
-                        fontSize: '15px', cursor: 'pointer',
+                        minHeight: '48px', fontSize: '15px', cursor: 'pointer',
                         touchAction: 'manipulation',
                         WebkitTapHighlightColor: 'transparent',
                         position: 'relative', zIndex: 1000,
                         display: 'block', width: '100%',
+                        userSelect: 'none', WebkitUserSelect: 'none',
                         marginTop: 8
                       }
                     }, '🗑️ Supprimer')}
