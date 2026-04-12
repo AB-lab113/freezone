@@ -484,6 +484,21 @@ function App() {
   }, [])
 
   useEffect(function() {
+    try {
+      var forumsActuels = JSON.parse(localStorage.getItem('zonefree-forums') || '[]')
+      var forumsPropres = forumsActuels.filter(function(f) {
+        var nom = String(f.name || f.nom || '').trim()
+        if (nom.length < 3) return false
+        if (/^\d+$/.test(nom)) return false
+        if (/^[A-Za-z]{1,2}$/.test(nom)) return false
+        return true
+      })
+      if (forumsPropres.length !== forumsActuels.length) {
+        localStorage.setItem('zonefree-forums', JSON.stringify(forumsPropres))
+        setForums(forumsPropres)
+      }
+    } catch (e) {}
+
     function handleSalonData(salonData) {
       if (!salonData || typeof salonData !== 'object') return
       if (typeof salonData === 'object' && salonData['#'] && !salonData.id) {
@@ -495,6 +510,10 @@ function App() {
       }
       if (!salonData.id || !salonData.name) return
       if (String(salonData.name).trim().length < 3) return
+      try {
+        var suppressions = JSON.parse(localStorage.getItem('zonefree-suppressed') || '[]')
+        if (suppressions.indexOf(String(salonData.id)) !== -1) return
+      } catch (e) {}
       if (salonData.deleted) {
         var delId = String(salonData.id)
         setForums(function(prev) {
@@ -1269,17 +1288,21 @@ function App() {
     if (!salon) return
     if (!window.confirm('Supprimer le salon "' + (salon.name || '') + '" ?')) return
     setForums(function(prev) {
-      return prev.filter(function(f) { return String(f.id) !== String(forumId) })
+      var nouveaux = prev.filter(function(f) { return String(f.id) !== String(forumId) })
+      try { localStorage.setItem('zonefree-forums', JSON.stringify(nouveaux)) } catch (e) {}
+      return nouveaux
     })
+    try {
+      var suppressions = JSON.parse(localStorage.getItem('zonefree-suppressed') || '[]')
+      suppressions.push(String(forumId))
+      localStorage.setItem('zonefree-suppressed', JSON.stringify(suppressions))
+    } catch (e) {}
     if (activeForum && String(activeForum.id) === String(forumId)) goHome()
     try {
       gun.get('zonefree-registry').get(String(forumId)).put({
-        id: forumId,
-        deleted: true
-      }, function(ack) {
-        console.log('[GUN DELETE]', ack && ack.err ? 'ERREUR' : 'OK id=' + forumId)
+        id: forumId, deleted: true, name: 'deleted'
       })
-    } catch (e) { console.warn('delete salon Gun error:', e) }
+    } catch (e) {}
   }
 
   // ═══════════════════ COMPUTED ═══════════════════
