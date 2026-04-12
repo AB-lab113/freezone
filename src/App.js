@@ -484,57 +484,40 @@ function App() {
   }, [])
 
   useEffect(function() {
-    function isValidSalon(s) {
-      if (!s || typeof s !== 'object') return false
-      if (!s.id || !s.name) return false
-      if (String(s.name).trim().length < 3) return false
-      if (s.deleted) return false
-      return true
+    function handleSalonData(salonData) {
+      if (!salonData || typeof salonData !== 'object') return
+      if (typeof salonData === 'object' && salonData['#'] && !salonData.id) {
+        gun.get(salonData['#']).once(function(realData) {
+          if (!realData) return
+          handleSalonData(realData)
+        })
+        return
+      }
+      if (!salonData.id || !salonData.name) return
+      if (String(salonData.name).trim().length < 3) return
+      if (salonData.deleted) {
+        var delId = String(salonData.id)
+        setForums(function(prev) {
+          return prev.filter(function(f) { return String(f.id) !== delId })
+        })
+        return
+      }
+      var copy = Object.assign({}, salonData, { topics: [] })
+      setForums(function(prev) {
+        var existe = prev.some(function(f) { return String(f.id) === String(copy.id) })
+        if (existe) return prev
+        return prev.concat([copy])
+      })
     }
 
-    gun.get('zonefree-registry').once(function(data) {
-      if (!data) return
-      var salons = []
-      Object.keys(data).forEach(function(k) {
-        if (k === '_') return
-        var s = data[k]
-        if (!isValidSalon(s)) return
-        salons.push(Object.assign({}, s, { topics: [] }))
-      })
-      if (salons.length > 0) {
-        setForums(function(prev) {
-          var merged = prev.slice()
-          salons.forEach(function(s) {
-            var existe = merged.some(function(f) { return String(f.id) === String(s.id) })
-            if (!existe) merged = merged.concat([s])
-          })
-          return merged
-        })
-      }
+    gun.get('zonefree-registry').map().once(function(salonData, key) {
+      if (!key || key === '_') return
+      handleSalonData(salonData)
     })
 
-    gun.get('zonefree-registry').on(function(data) {
-      if (!data) return
-      Object.keys(data).forEach(function(k) {
-        if (k === '_') return
-        var s = data[k]
-        if (!s || typeof s !== 'object') return
-        if (!s.id) return
-        if (s.deleted) {
-          var delId = String(s.id)
-          setForums(function(prev) {
-            return prev.filter(function(f) { return String(f.id) !== delId })
-          })
-          return
-        }
-        if (!s.name || String(s.name).trim().length < 3) return
-        var salonCopy = Object.assign({}, s, { topics: [] })
-        setForums(function(prev) {
-          var existe = prev.some(function(f) { return String(f.id) === String(salonCopy.id) })
-          if (existe) return prev
-          return prev.concat([salonCopy])
-        })
-      })
+    gun.get('zonefree-registry').map().on(function(salonData, key) {
+      if (!key || key === '_') return
+      handleSalonData(salonData)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
