@@ -15,7 +15,6 @@ var gun = Gun({
 
 var CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
 var TOPICS_PAR_PAGE = 5
-var IPFS_GATEWAY = 'https://ipfs.4everland.io/ipfs/'
 
 
 var FORUMS_INIT = [
@@ -226,14 +225,6 @@ function App() {
   // ─── NACL E2E ───
   var [naclKeyPair, setNaclKeyPair] = useState(null)
   var [naclLoading, setNaclLoading] = useState(false)
-
-  // ─── IPFS / 4EVERLAND ───
-  var [everlandJWT, seteverlandJWT] = useState(() => localStorage.getItem('zonefree-4EVERLAND-jwt') || '')
-  var [neweverlandJWT, setNeweverlandJWT] = useState('')
-  var [showJWTModal, setShowJWTModal] = useState(false)
-  var [ipfsSaving, setIpfsSaving] = useState(false)
-  var [ipfsCID, setIpfsCID] = useState(() => localStorage.getItem('zonefree-ipfs-cid') || null)
-  var [ipfsStatus, setIpfsStatus] = useState(null)
 
   // ─── NOTIFICATIONS ───
   var [notifPermission, setNotifPermission] = useState(
@@ -701,9 +692,7 @@ function App() {
   useEffect(() => {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
-  useEffect(() => {
-    if (everlandJWT) localStorage.setItem('zonefree-4EVERLAND-jwt', everlandJWT)
-  }, [everlandJWT])
+
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
   var demanderNotifications = async () => {
@@ -760,63 +749,6 @@ function App() {
     } else {
       alert(`Aucun domaine .x trouvé pour ce wallet.\n\nCela peut être normal si le domaine est récent ou si l'API UD est indisponible temporairement.`)
     }
-  }
-
-  // ═══════════════════ IPFS / 4EVERLAND ═══════════════════
-  var sauvegarderIPFS = async () => {
-    if (!everlandJWT) {
-      alert('Configurez d\'abord votre 4EVERLAND JWT dans les paramètres !')
-      setShowJWTModal(true)
-      return
-    }
-    setIpfsSaving(true)
-    setIpfsStatus(null)
-    try {
-      var data = { forums, updatedAt: Date.now(), version: '1.0' }
-      var r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${everlandJWT}`
-        },
-        body: JSON.stringify({
-          pinataContent: data,
-          pinataMetadata: { name: `ZoneFree-backup-${Date.now()}` }
-        })
-      })
-      if (!r.ok) {
-        var err = await r.json()
-        throw new Error(err.error?.details || `HTTP ${r.status}`)
-      }
-      var res = await r.json()
-      var cid = res.IpfsHash
-      localStorage.setItem('zonefree-ipfs-cid', cid)
-      setIpfsCID(cid)
-      setIpfsStatus('success')
-      envoyerNotif('💾 ZoneFree IPFS', `Sauvegarde réussie ! CID: ${cid.slice(0, 12)}...`)
-      alert(`✅ Sauvegarde IPFS réussie !\nCID: ${cid}`)
-    } catch (e) {
-      setIpfsStatus('error')
-      alert(`❌ Erreur IPFS 4EVERLAND :\n${e.message}\n\nVérifiez votre JWT 4EVERLAND.`)
-    } finally {
-      setIpfsSaving(false)
-    }
-  }
-
-  var sauvegarderIPFSAuto = async (data) => {
-    if (!everlandJWT) return null
-    try {
-      var r = await fetch('https://api.4EVERLAND.cloud/pinning/pinJSONToIPFS', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${everlandJWT}` },
-        body: JSON.stringify({ pinataContent: data, pinataMetadata: { name: 'ZoneFree-' + Date.now() } })
-      })
-      if (!r.ok) return null
-      var res = await r.json()
-      localStorage.setItem('zonefree-ipfs-cid', res.IpfsHash)
-      setIpfsCID(res.IpfsHash)
-      return res.IpfsHash
-    } catch (e) { return null }
   }
 
   // ═══════════════════ LIKES ═══════════════════
@@ -1306,7 +1238,6 @@ function App() {
         deleted: false
       })
     } catch (e) { console.warn('publish topic Gun error:', e) }
-    await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
   var posterReponse = async () => {
@@ -1335,7 +1266,6 @@ function App() {
         date: new Date().toLocaleDateString('fr-FR')
       })
     } catch (e) { console.warn('publish reply Gun error:', e) }
-    await sauvegarderIPFSAuto({ forums: upd, updatedAt: Date.now() })
   }
 
   var togglePin = (topicId) => {
@@ -1393,7 +1323,7 @@ function App() {
   }
   var inputStyleCenter = Object.assign({}, inputStyle, { textAlign: 'center', fontWeight: 700, fontSize: 18 })
   var inputStyleResize = Object.assign({}, inputStyle, { resize: 'vertical' })
-  var inputStyleSmall = Object.assign({}, inputStyle, { fontSize: 13 })
+
 
   var topicsBase = activeForum?.topics.filter(function(t) {
     return t.title.toLowerCase().includes(rechercheTopic.toLowerCase()) ||
@@ -1931,32 +1861,6 @@ function App() {
                 }
               </div>
 
-              {/* 💾 IPFS 4EVERLAND */}
-              <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>💾 IPFS Backup (4EVERLAND)</div>
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>
-                      {everlandJWT
-                        ? ipfsCID ? `✅ Dernier CID : ${ipfsCID.slice(0, 14)}...` : 'JWT configuré — prêt à sauvegarder'
-                        : 'Configurez votre 4EVERLAND JWT'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={() => { setNeweverlandJWT(everlandJWT); setShowJWTModal(true) }} style={{ fontSize: 12 }}>
-                      {everlandJWT ? '✏️ Modifier JWT' : '🔑 Configurer'}
-                    </button>
-                    {everlandJWT && (
-                      <button className="btn btn-primary" onClick={sauvegarderIPFS} disabled={ipfsSaving} style={{ fontSize: 12, padding: '6px 14px' }}>
-                        {ipfsSaving ? '⏳ Envoi...' : '📤 Sauvegarder'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {ipfsStatus === 'success' && <div style={{ marginTop: 8, fontSize: 12, color: '#22c55e' }}>✅ Sauvegarde IPFS réussie !</div>}
-                {ipfsStatus === 'error' && <div style={{ marginTop: 8, fontSize: 12, color: '#ef4444' }}>❌ Échec — vérifiez votre JWT 4EVERLAND</div>}
-              </div>
-
               {/* 🔐 NaCl E2E */}
               <div style={{ padding: '16px 20px', borderRadius: 12, background: dark ? '#0d1117' : '#f8f9ff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2279,52 +2183,12 @@ function App() {
         </div>
       )}
 
-      {/* ══════════════ MODAL JWT 4EVERLAND ══════════════ */}
-      {showJWTModal && (
-        <div style={{ position: 'fixed', inset: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <div style={{ background: dark ? '#161b22' : 'white', borderRadius: 16, padding: 32, width: 460, border: '1.5px solid #6366f1' }}>
-            <h2 style={{ marginBottom: 8, color: '#6366f1' }}>🔑 4EVERLAND JWT</h2>
-            <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
-              Créez un JWT sur{' '}
-              <a href="https://app.4everland.cloud/developers/api-keys" target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>
-                app.4everland.cloud
-              </a>{' '}
-              → API Keys → New Key
-            </p>
-            <input
-              value={neweverlandJWT}
-              onChange={e => setNeweverlandJWT(e.target.value)}
-              style={inputStyleSmall}
-              placeholder="eyJhbGci... (votre 4EVERLAND JWT)"
-              type="password"
-              autoFocus
-            />
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={function() {
-                if (!neweverlandJWT.trim()) { alert('JWT vide !'); return }
-                var jwt = neweverlandJWT.trim()
-                seteverlandJWT(jwt)
-                localStorage.setItem('zonefree-4EVERLAND-jwt', jwt)
-                setShowJWTModal(false)
-                alert('✅ JWT sauvegardé !')
-              }}>
-                ✓ Sauvegarder
-              </button>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowJWTModal(false)}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ══════════════ FOOTER ══════════════ */}
       <div className="footer">
         Zone Free © 2026 —{' '}
         <a href={`https://etherscan.io/address/${CONTRACT_ADDRESS}`} target="_blank" rel="noreferrer" style={{ color: '#6366f1' }}>
           Contrat Etherscan
         </a>
-        {ipfsCID && <> — <a href={`${IPFS_GATEWAY}${ipfsCID}`} target="_blank" rel="noreferrer" style={{ color: '#22c55e' }}>💾 IPFS</a></>}
         {' — '}
         <a href="https://zonefree.x" style={{ color: '#6366f1' }}>🌐 zonefree.x</a>
       </div>
