@@ -13,7 +13,7 @@ var gun = Gun({
   ]
 })
 
-var CONTRACT_ADDRESS = '0x08789ba50be5547200e8306cea37d91deb732b5e'
+var CONTRACT_ADDRESS = '0xdb410a6dfcb8fe8f78b7b2783bb674ca0af114bd'
 var TOPICS_PAR_PAGE = 5
 
 
