@@ -7,10 +7,12 @@ import ForumAboABI from './ForumAbo.json'
 import { useAppKit, useAppKitAccount, useAppKitProvider, useDisconnect } from '@reown/appkit/react'
 
 import Gun from 'gun/gun'
+require('gun/lib/webrtc')
 var gun = Gun({
   peers: [
     'https://gun-relay-production-974a.up.railway.app/gun'
-  ]
+  ],
+  rtc: true
 })
 
 var CONTRACT_ADDRESS = '0xdb410a6dfcb8fe8f78b7b2783bb674ca0af114bd'
