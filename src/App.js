@@ -1312,6 +1312,62 @@ function App() {
     })
   }
 
+  var supprimerTopic = function(forumId, topicId) {
+    setForums(function(prev) {
+      var nouveaux = prev.map(function(f) {
+        if (String(f.id) !== String(forumId)) return f
+        var filteredTopics = (f.topics || []).filter(function(t) { return String(t.id) !== String(topicId) })
+        return Object.assign({}, f, { topics: filteredTopics })
+      })
+      try { localStorage.setItem('zonefree-forums', JSON.stringify(nouveaux)) } catch (e) {}
+      return nouveaux
+    })
+    setActiveForum(function(prev) {
+      if (!prev || String(prev.id) !== String(forumId)) return prev
+      var filteredTopics = (prev.topics || []).filter(function(t) { return String(t.id) !== String(topicId) })
+      return Object.assign({}, prev, { topics: filteredTopics })
+    })
+    if (activeTopic && String(activeTopic.id) === String(topicId)) goForum()
+    try {
+      gun.get('zonefree-topics-' + String(forumId)).get(String(topicId)).put({
+        id: String(topicId), title: 'deleted', deleted: true
+      })
+    } catch (e) { console.warn('supprimerTopic Gun error:', e) }
+  }
+
+  var supprimerReponse = function(forumId, topicId, replyId) {
+    var updateReplies = function(topics) {
+      return (topics || []).map(function(t) {
+        if (String(t.id) !== String(topicId)) return t
+        var filtered = (t.replies || []).filter(function(r) { return String(r.id) !== String(replyId) })
+        return Object.assign({}, t, { replies: filtered })
+      })
+    }
+    setForums(function(prev) {
+      var nouveaux = prev.map(function(f) {
+        if (String(f.id) !== String(forumId)) return f
+        return Object.assign({}, f, { topics: updateReplies(f.topics) })
+      })
+      try { localStorage.setItem('zonefree-forums', JSON.stringify(nouveaux)) } catch (e) {}
+      return nouveaux
+    })
+    setActiveForum(function(prev) {
+      if (!prev || String(prev.id) !== String(forumId)) return prev
+      return Object.assign({}, prev, { topics: updateReplies(prev.topics) })
+    })
+    setActiveTopic(function(prev) {
+      if (!prev || String(prev.id) !== String(topicId)) return prev
+      var filtered = (prev.replies || []).filter(function(r) { return String(r.id) !== String(replyId) })
+      return Object.assign({}, prev, { replies: filtered })
+    })
+    try {
+      var reponseKey = String(forumId) + '-' + String(topicId)
+      gun.get('zonefree-replies-' + reponseKey).get(String(replyId)).put({
+        id: String(replyId), content: '', deleted: true
+      })
+    } catch (e) { console.warn('supprimerReponse Gun error:', e) }
+  }
+
   // ═══════════════════ COMPUTED ═══════════════════
   var joursRestants = expiration
     ? Math.max(0, Math.ceil((expiration - new Date()) / (1000 * 60 * 60 * 24)))
@@ -2112,16 +2168,57 @@ function App() {
           }, '← Retour ' + ((activeForum && activeForum.emoji) || '') + ' ' + ((activeForum && activeForum.name) || ''))}
           </div>
           <div style={{ borderRadius: 14, padding: 28, marginBottom: 24, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid #6366f1' }}>
-            <h2 style={{ fontSize: 22, marginBottom: 12 }}>
-              {activeTopic.pinned && <span style={{ marginRight: 8 }}>📌</span>}
-              {activeTopic.title}
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <h2 style={{ fontSize: 22, marginBottom: 12, flex: 1 }}>
+                {activeTopic.pinned && <span style={{ marginRight: 8 }}>📌</span>}
+                {activeTopic.title}
+              </h2>
+              {(function() {
+                var peutSuppr = account && activeTopic.author &&
+                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                if (!peutSuppr) return null
+                return React.createElement('button', {
+                  onClick: function(e) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    supprimerTopic(activeForum.id, activeTopic.id)
+                  },
+                  title: 'Supprimer ce message',
+                  style: {
+                    background: 'transparent', color: '#ef4444', border: 'none',
+                    cursor: 'pointer', fontSize: '18px', padding: '6px 10px',
+                    borderRadius: '8px', lineHeight: 1,
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }
+                }, '🗑️')
+              })()}
+            </div>
             <p style={{ opacity: 0.5, fontSize: 13, marginBottom: 16 }}>par <strong>{activeTopic.author}</strong> · {activeTopic.date}</p>
             {activeTopic.content && <p style={{ fontSize: 15, lineHeight: 1.7 }}>{activeTopic.content}</p>}
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button className={'like-btn ' + (getLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id).hasLiked ? 'liked' : '')} onClick={function() { toggleLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id) }}>
                 ❤️ {getLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id).count || ''} J'aime
               </button>
+              {(function() {
+                var peutSuppr = account && activeTopic.author &&
+                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                if (!peutSuppr) return null
+                return React.createElement('button', {
+                  onClick: function(e) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    supprimerTopic(activeForum.id, activeTopic.id)
+                  },
+                  style: {
+                    background: '#ef4444', color: '#fff', border: 'none',
+                    borderRadius: '12px', padding: '12px 24px',
+                    fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'transparent'
+                  }
+                }, '🗑️ Supprimer ce topic')
+              })()}
             </div>
           </div>
           <h3 style={{ marginBottom: 16, opacity: 0.7 }}>
@@ -2129,7 +2226,29 @@ function App() {
           </h3>
           {activeTopic.replies.map(function(r) { return (
             <div key={r.id} style={{ borderRadius: 12, padding: '16px 20px', marginBottom: 12, background: dark ? '#161b22' : '#ffffff', border: '1.5px solid', borderColor: dark ? '#30363d' : '#e2e8f0' }}>
-              <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 8 }}><strong>{r.author}</strong> · {r.date}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 8, flex: 1 }}><strong>{r.author}</strong> · {r.date}</p>
+                {(function() {
+                  var peutSuppr = account && r.author &&
+                    String(r.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                  if (!peutSuppr) return null
+                  return React.createElement('button', {
+                    onClick: function(e) {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      supprimerReponse(activeForum.id, activeTopic.id, r.id)
+                    },
+                    title: 'Supprimer cette réponse',
+                    style: {
+                      background: 'transparent', color: '#ef4444', border: 'none',
+                      cursor: 'pointer', fontSize: '16px', padding: '4px 8px',
+                      borderRadius: '6px', lineHeight: 1,
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'transparent'
+                    }
+                  }, '🗑️')
+                })()}
+              </div>
               <p style={{ fontSize: 15, lineHeight: 1.6 }}>{r.content}</p>
               <button className={'like-btn ' + (getLike('reply-' + r.id).hasLiked ? 'liked' : '')} style={{ marginTop: 8 }} onClick={function() { toggleLike('reply-' + r.id) }}>
                 ❤️ {getLike('reply-' + r.id).count || ''} J'aime
