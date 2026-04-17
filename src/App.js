@@ -2029,9 +2029,8 @@ function App() {
                   },
                   style: {
                     background: '#ef4444', color: '#fff', border: 'none',
-                    borderRadius: '12px', padding: '12px 24px',
-                    fontSize: '14px', fontWeight: '600', fontFamily: 'inherit',
-                    cursor: 'pointer',
+                    borderRadius: '8px', padding: '8px 16px',
+                    minHeight: '44px', fontSize: '14px', cursor: 'pointer',
                     touchAction: 'manipulation',
                     WebkitTapHighlightColor: 'transparent'
                   }
