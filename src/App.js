@@ -23,6 +23,7 @@ var FORUMS_INIT = [
   {
     id: 'general', emoji: '💬', name: 'Général',
     description: 'Discussions libres, actualités du jour',
+    creator: '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d',
     topics: [
       { id: 1, title: 'Bienvenue sur ZoneFree ! Présentez-vous', author: 'Admin', pinned: true, replies: [{ id: 1, author: '0xA1B2...C3D4', content: 'Bonjour tout le monde !', date: '01/03/2026' }, { id: 2, author: '0xE5F6...G7H8', content: 'Ravi d\'être ici !', date: '01/03/2026' }], date: '01/03/2026' },
       { id: 2, title: 'Les règles de la communauté ZoneFree', author: 'Admin', pinned: true, replies: [], date: '01/03/2026' },
@@ -32,6 +33,7 @@ var FORUMS_INIT = [
   {
     id: 'crypto', emoji: '₿', name: 'Crypto',
     description: 'Bitcoin, Ethereum, DeFi, Web3',
+    creator: '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d',
     topics: [
       { id: 1, title: 'Bitcoin 100k — Analyse technique du marché', author: '0xF3E2...1A2B', pinned: false, replies: [], date: '28/02/2026' },
       { id: 2, title: 'DeFi vs Finance traditionnelle — Le débat', author: '0xC9D8...5E6F', pinned: false, replies: [], date: '27/02/2026' },
@@ -42,6 +44,7 @@ var FORUMS_INIT = [
   {
     id: 'tech', emoji: '💻', name: 'Tech',
     description: 'Technologie, IA, logiciels, hardware',
+    creator: '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d',
     topics: [
       { id: 1, title: 'Les meilleures IA open-source en 2026', author: '0xD3C2...7I8J', pinned: false, replies: [], date: '01/03/2026' },
       { id: 2, title: 'Linux vs Windows — Quel OS pour la vie privée ?', author: '0xH1G0...5K6L', pinned: false, replies: [], date: '28/02/2026' },
@@ -51,6 +54,7 @@ var FORUMS_INIT = [
   {
     id: 'politique', emoji: '🏛️', name: 'Politique',
     description: 'Débats politiques, géopolitique mondiale',
+    creator: '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d',
     topics: [
       { id: 1, title: 'Censure d\'internet — Tour du monde des restrictions', author: '0xL7K6...1O2P', pinned: false, replies: [], date: '01/03/2026' },
       { id: 2, title: 'CBDC monnaie numérique d\'état, bonne ou mauvaise idée ?', author: '0xN5M4...9Q0R', pinned: false, replies: [], date: '27/02/2026' },
@@ -60,6 +64,7 @@ var FORUMS_INIT = [
   {
     id: 'journaliste', emoji: '📰', name: 'Journaliste',
     description: 'Médias libres, investigations, presse indépendante',
+    creator: '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d',
     topics: [
       { id: 1, title: 'Comment publier anonymement en 2026 — Guide complet', author: '0xR1Q0...5U6V', pinned: false, replies: [], date: '01/03/2026' },
       { id: 2, title: 'Les outils du journaliste indépendant : Tor, Signal, etc.', author: '0xT9S8...3W4X', pinned: false, replies: [], date: '28/02/2026' }
@@ -2053,8 +2058,8 @@ function App() {
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
                     {(function() {
-                      var peutSupprimer = !f.creator || (account &&
-                        String(f.creator).toLowerCase() === String(account).toLowerCase())
+                      var peutSupprimer = account && f.creator &&
+                        String(f.creator).toLowerCase() === String(account).toLowerCase()
                       return peutSupprimer
                     })() && React.createElement('button', {
                       'data-action': 'supprimer',
@@ -2108,8 +2113,8 @@ function App() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
               {(function() {
-                var peutSupprimer = !activeForum.creator || (account &&
-                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase())
+                var peutSupprimer = account && activeForum.creator &&
+                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase()
                 if (!peutSupprimer) return null
                 return React.createElement('button', {
                   onClick: function(e) {
