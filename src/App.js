@@ -503,19 +503,42 @@ function App() {
       var changed = false
       var next = prev.map(function(f) {
         if (String(f.id) !== String(fid)) return f
-        var existe = (f.topics || []).some(function(t) { return String(t.id) === String(topic.id) })
-        if (existe) return f
-        changed = true
-        var newTopic = Object.assign({}, {
-          id: topic.id,
-          title: topic.title,
-          content: topic.content || '',
-          author: topic.author || '',
-          pinned: false,
-          replies: [],
-          date: topic.date || new Date().toLocaleDateString('fr-FR')
+        var topicFound = false
+        var topicChanged = false
+        var updatedTopics = (f.topics || []).map(function(t) {
+          if (String(t.id) !== String(topic.id)) return t
+          topicFound = true
+          var newFields = {
+            title: topic.title,
+            content: topic.content || '',
+            author: topic.author || '',
+            date: topic.date || t.date
+          }
+          if (t.title === newFields.title && t.content === newFields.content &&
+              t.author === newFields.author && t.date === newFields.date) {
+            return t
+          }
+          topicChanged = true
+          return Object.assign({}, t, newFields)
         })
-        return Object.assign({}, f, { topics: [newTopic].concat(f.topics || []) })
+        if (!topicFound) {
+          changed = true
+          var newTopic = Object.assign({}, {
+            id: topic.id,
+            title: topic.title,
+            content: topic.content || '',
+            author: topic.author || '',
+            pinned: false,
+            replies: [],
+            date: topic.date || new Date().toLocaleDateString('fr-FR')
+          })
+          return Object.assign({}, f, { topics: [newTopic].concat(f.topics || []) })
+        }
+        if (topicChanged) {
+          changed = true
+          return Object.assign({}, f, { topics: updatedTopics })
+        }
+        return f
       })
       return changed ? next : prev
     })
@@ -576,9 +599,24 @@ function App() {
       }
       var copy = Object.assign({}, salonData, { topics: [] })
       setForums(function(prev) {
-        var existe = prev.some(function(f) { return String(f.id) === String(copy.id) })
-        if (existe) return prev
-        return prev.concat([copy])
+        var existe = false
+        var changed = false
+        var next = prev.map(function(f) {
+          if (String(f.id) !== String(copy.id)) return f
+          existe = true
+          var keys = Object.keys(copy)
+          var diff = false
+          for (var k = 0; k < keys.length; k++) {
+            var key = keys[k]
+            if (key === 'topics') continue
+            if (f[key] !== copy[key]) { diff = true; break }
+          }
+          if (!diff) return f
+          changed = true
+          return Object.assign({}, f, copy, { topics: f.topics || [] })
+        })
+        if (!existe) return prev.concat([copy])
+        return changed ? next : prev
       })
     }
 
@@ -2015,8 +2053,8 @@ function App() {
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
                     {(function() {
-                      var peutSupprimer = f.creator && account &&
-                        String(f.creator).toLowerCase() === String(account).toLowerCase()
+                      var peutSupprimer = !f.creator || (account &&
+                        String(f.creator).toLowerCase() === String(account).toLowerCase())
                       return peutSupprimer
                     })() && React.createElement('button', {
                       'data-action': 'supprimer',
@@ -2070,8 +2108,8 @@ function App() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
               {(function() {
-                var peutSupprimer = activeForum.creator && account &&
-                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase()
+                var peutSupprimer = !activeForum.creator || (account &&
+                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase())
                 if (!peutSupprimer) return null
                 return React.createElement('button', {
                   onClick: function(e) {
