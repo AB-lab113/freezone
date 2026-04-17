@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''c:/Users/shark/Desktop/forum-decentralise/package.json'',''utf8''\\)\\);console.log\\(''JSON valide''\\)\")",
+      "Bash(ls c:/Users/shark/Desktop/forum-decentralise/.env*)",
+      "Bash(npx vercel:*)",
+      "Bash(npm --version)",
+      "Bash(grep -v \"^$\")",
+      "Bash(CI=true npm run build)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}
