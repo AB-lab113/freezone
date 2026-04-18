@@ -17,6 +17,7 @@ var gun = Gun({
 
 var CONTRACT_ADDRESS = '0xdb410a6dfcb8fe8f78b7b2783bb674ca0af114bd'
 var TOPICS_PAR_PAGE = 5
+var SUPER_ADMIN = '0xb4A7D8a91F80cCE5C4B7C9E16a1315101c89A12d'
 
 
 var FORUMS_INIT = [
@@ -454,7 +455,36 @@ function App() {
   var replySubscribed = useRef({})
 
   function handleGunReply(rep, fid) {
-    if (!rep || !rep.id || !rep.content || !rep.topicId) return
+    if (!rep || !rep.id) return
+    if (rep.deleted === true) {
+      var removeReply = function(topics) {
+        return (topics || []).map(function(t) {
+          var filtered = (t.replies || []).filter(function(r) { return String(r.id) !== String(rep.id) })
+          if (filtered.length === (t.replies || []).length) return t
+          return Object.assign({}, t, { replies: filtered })
+        })
+      }
+      setForums(function(prev) {
+        var next = prev.map(function(f) {
+          if (String(f.id) !== String(fid)) return f
+          return Object.assign({}, f, { topics: removeReply(f.topics) })
+        })
+        try { localStorage.setItem('zonefree-forums', JSON.stringify(next)) } catch (e) {}
+        return next
+      })
+      setActiveForum(function(prev) {
+        if (!prev || String(prev.id) !== String(fid)) return prev
+        return Object.assign({}, prev, { topics: removeReply(prev.topics) })
+      })
+      setActiveTopic(function(prev) {
+        if (!prev) return prev
+        var filtered = (prev.replies || []).filter(function(r) { return String(r.id) !== String(rep.id) })
+        if (filtered.length === (prev.replies || []).length) return prev
+        return Object.assign({}, prev, { replies: filtered })
+      })
+      return
+    }
+    if (!rep.content || !rep.topicId) return
     function insertReply(topics) {
       return (topics || []).map(function(t) {
         if (String(t.id) !== String(rep.topicId)) return t
@@ -502,8 +532,31 @@ function App() {
   }
 
   function handleGunTopic(topic, fid) {
-    if (!topic || !topic.id || !topic.title) return
-    if (topic.deleted) return
+    if (!topic || !topic.id) return
+    if (topic.deleted === true) {
+      setForums(function(prev) {
+        var next = prev.map(function(f) {
+          if (String(f.id) !== String(fid)) return f
+          var filtered = (f.topics || []).filter(function(t) { return String(t.id) !== String(topic.id) })
+          if (filtered.length === (f.topics || []).length) return f
+          return Object.assign({}, f, { topics: filtered })
+        })
+        try { localStorage.setItem('zonefree-forums', JSON.stringify(next)) } catch (e) {}
+        return next
+      })
+      setActiveForum(function(prev) {
+        if (!prev || String(prev.id) !== String(fid)) return prev
+        var filtered = (prev.topics || []).filter(function(t) { return String(t.id) !== String(topic.id) })
+        if (filtered.length === (prev.topics || []).length) return prev
+        return Object.assign({}, prev, { topics: filtered })
+      })
+      setActiveTopic(function(prev) {
+        if (!prev || String(prev.id) !== String(topic.id)) return prev
+        return null
+      })
+      return
+    }
+    if (!topic.title) return
     setForums(function(prev) {
       var changed = false
       var next = prev.map(function(f) {
@@ -1373,7 +1426,7 @@ function App() {
     if (activeTopic && String(activeTopic.id) === String(topicId)) goForum()
     try {
       gun.get('zonefree-topics-' + String(forumId)).get(String(topicId)).put({
-        id: String(topicId), title: 'deleted', deleted: true
+        id: String(topicId), deleted: true, title: '', content: ''
       })
     } catch (e) { console.warn('supprimerTopic Gun error:', e) }
   }
@@ -1406,7 +1459,7 @@ function App() {
     try {
       var reponseKey = String(forumId) + '-' + String(topicId)
       gun.get('zonefree-replies-' + reponseKey).get(String(replyId)).put({
-        id: String(replyId), content: '', deleted: true
+        id: String(replyId), deleted: true, content: '', author: ''
       })
     } catch (e) { console.warn('supprimerReponse Gun error:', e) }
   }
@@ -2058,8 +2111,9 @@ function App() {
                       {f.topics.some(function(t) { return t.pinned }) && <span>📌</span>}
                     </div>
                     {(function() {
-                      var peutSupprimer = account && f.creator &&
-                        String(f.creator).toLowerCase() === String(account).toLowerCase()
+                      var peutSupprimer = (account && f.creator &&
+                        String(f.creator).toLowerCase() === String(account).toLowerCase())
+                        || (account && String(account).toLowerCase() === SUPER_ADMIN.toLowerCase())
                       return peutSupprimer
                     })() && React.createElement('button', {
                       'data-action': 'supprimer',
@@ -2113,8 +2167,9 @@ function App() {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
               <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
               {(function() {
-                var peutSupprimer = account && activeForum.creator &&
-                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase()
+                var peutSupprimer = (account && activeForum.creator &&
+                  String(activeForum.creator).toLowerCase() === String(account).toLowerCase())
+                  || (account && String(account).toLowerCase() === SUPER_ADMIN.toLowerCase())
                 if (!peutSupprimer) return null
                 return React.createElement('button', {
                   onClick: function(e) {
@@ -2217,8 +2272,9 @@ function App() {
                 {activeTopic.title}
               </h2>
               {(function() {
-                var peutSuppr = account && activeTopic.author &&
-                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                var peutSuppr = (account && activeTopic.author &&
+                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase())
+                  || (account && String(account).toLowerCase() === SUPER_ADMIN.toLowerCase())
                 if (!peutSuppr) return null
                 return React.createElement('button', {
                   onClick: function(e) {
@@ -2244,8 +2300,9 @@ function App() {
                 ❤️ {getLike((activeForum ? activeForum.id : '') + '-' + activeTopic.id).count || ''} J'aime
               </button>
               {(function() {
-                var peutSuppr = account && activeTopic.author &&
-                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                var peutSuppr = (account && activeTopic.author &&
+                  String(activeTopic.author).toLowerCase() === String(displayName(account)).toLowerCase())
+                  || (account && String(account).toLowerCase() === SUPER_ADMIN.toLowerCase())
                 if (!peutSuppr) return null
                 return React.createElement('button', {
                   onClick: function(e) {
@@ -2272,8 +2329,9 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 8, flex: 1 }}><strong>{r.author}</strong> · {r.date}</p>
                 {(function() {
-                  var peutSuppr = account && r.author &&
-                    String(r.author).toLowerCase() === String(displayName(account)).toLowerCase()
+                  var peutSuppr = (account && r.author &&
+                    String(r.author).toLowerCase() === String(displayName(account)).toLowerCase())
+                    || (account && String(account).toLowerCase() === SUPER_ADMIN.toLowerCase())
                   if (!peutSuppr) return null
                   return React.createElement('button', {
                     onClick: function(e) {
