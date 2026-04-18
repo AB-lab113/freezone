@@ -1431,6 +1431,18 @@ function App() {
     } catch (e) { console.warn('supprimerTopic Gun error:', e) }
   }
 
+  var supprimerConversation = function(convId) {
+    setMessages(function(prev) {
+      var next = (prev || []).filter(function(c) { return String(c.id) !== String(convId) })
+      try { localStorage.setItem('zonefree-messages', JSON.stringify(next)) } catch (e) {}
+      return next
+    })
+    setActiveConversation(function(prev) {
+      if (!prev || String(prev.id) !== String(convId)) return prev
+      return null
+    })
+  }
+
   var supprimerReponse = function(forumId, topicId, replyId) {
     var updateReplies = function(topics) {
       return (topics || []).map(function(t) {
@@ -1666,16 +1678,37 @@ function App() {
                   } else {
                     preview = 'Démarrer la conversation...'
                   }
+                  var accLow = String(account || '').toLowerCase()
+                  var participants = (conv.participants || []).map(function(p) { return String(p).toLowerCase() })
+                  var peutSupprimerConv = (account && participants.indexOf(accLow) !== -1)
+                    || (account && accLow === SUPER_ADMIN.toLowerCase())
                   return React.createElement('div', {
                     key: conv.id,
                     className: 'conversation-item',
-                    onClick: function() { ouvrirConversation(conv) }
+                    onClick: function() { ouvrirConversation(conv) },
+                    style: { display: 'flex', alignItems: 'center', gap: 8 }
                   },
                     React.createElement('div', {className: 'conv-avatar'}, '🔐'),
-                    React.createElement('div', {className: 'conv-info'},
+                    React.createElement('div', {className: 'conv-info', style: { flex: 1, minWidth: 0 }},
                       React.createElement('div', {className: 'conv-name'}, getPseudoOrAddr(other)),
                       React.createElement('div', {className: 'conv-preview'}, preview)
-                    )
+                    ),
+                    peutSupprimerConv && React.createElement('button', {
+                      onClick: function(e) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        supprimerConversation(conv.id)
+                      },
+                      onPointerUp: function(e) { e.stopPropagation() },
+                      title: 'Supprimer cette conversation',
+                      style: {
+                        background: 'transparent', color: '#ef4444', border: 'none',
+                        cursor: 'pointer', fontSize: '16px', padding: '6px 10px',
+                        borderRadius: '6px', lineHeight: 1, flexShrink: 0,
+                        touchAction: 'manipulation',
+                        WebkitTapHighlightColor: 'transparent'
+                      }
+                    }, '🗑️')
                   )
                 })}
               </div>
