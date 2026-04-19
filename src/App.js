@@ -117,10 +117,11 @@ class MessagerieErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null } }
   static getDerivedStateFromError(error) { return { hasError: true, error: error.message } }
   render() {
+    var self = this
     if (this.state.hasError) return (
       <div style={{ padding: 20, color: '#ef4444', textAlign: 'center' }}>
         Erreur messagerie: {this.state.error}
-        <br /><button onClick={() => this.setState({ hasError: false })} style={{ marginTop: 12, padding: '8px 16px', cursor: 'pointer' }}>Réessayer</button>
+        <br /><button onClick={function() { self.setState({ hasError: false }) }} style={{ marginTop: 12, padding: '8px 16px', cursor: 'pointer' }}>Réessayer</button>
       </div>
     )
     return this.props.children
@@ -162,15 +163,16 @@ function App() {
   var { walletProvider } = useAppKitProvider('eip155')
   var { disconnect } = useDisconnect()
 
-  var disconnectAll = async () => {
+  var disconnectAll = async function() {
     try { await disconnect() } catch(e) {}
+    try { cleanupGunListeners() } catch (e) {}
     setAccount(null)
     setEstAbonne(false)
     setNaclKeyPair(null)
   }
 
   // ─── THEME ───
-  var [dark, setDark] = useState(() => {
+  var [dark, setDark] = useState(function() {
     var s = localStorage.getItem('zonefree-dark')
     return s !== null ? JSON.parse(s) : true
   })
@@ -194,7 +196,7 @@ function App() {
   var [newPseudo, setNewPseudo] = useState('')
 
   // ─── FORUMS ───
-  var [forums, setForums] = useState(() => {
+  var [forums, setForums] = useState(function() {
     var s = localStorage.getItem('zonefree-forums')
     return s ? JSON.parse(s) : FORUMS_INIT
   })
@@ -211,13 +213,13 @@ function App() {
   var [currentPage, setCurrentPage] = useState(1)
 
   // ─── LIKES ───
-  var [likes, setLikes] = useState(() => {
+  var [likes, setLikes] = useState(function() {
     var s = localStorage.getItem('zonefree-likes')
     return s ? JSON.parse(s) : {}
   })
 
   // ─── MESSAGERIE LOCALE ───
-  var [messages, setMessages] = useState(() => {
+  var [messages, setMessages] = useState(function() {
     var s = localStorage.getItem('zonefree-messages')
     return s ? JSON.parse(s) : []
   })
@@ -229,6 +231,43 @@ function App() {
   var imageInputRef = useRef(null)
   var gunSubscribed = useRef({})
   var activeConvKeyRef = useRef(null)
+  var gunListenersRef = useRef([])
+  var convListenersRef = useRef({})
+
+  function trackGunListener(ref) {
+    if (ref && typeof ref.off === 'function') gunListenersRef.current.push(ref)
+    return ref
+  }
+
+  function trackConvListener(key, ref) {
+    if (!ref || typeof ref.off !== 'function') return ref
+    if (!convListenersRef.current[key]) convListenersRef.current[key] = []
+    convListenersRef.current[key].push(ref)
+    return ref
+  }
+
+  function offListenerList(arr) {
+    if (!arr) return
+    for (var i = 0; i < arr.length; i++) {
+      try { if (arr[i] && typeof arr[i].off === 'function') arr[i].off() } catch (e) {}
+    }
+  }
+
+  function cleanupConvListeners(key) {
+    if (!key) return
+    offListenerList(convListenersRef.current[key])
+    delete convListenersRef.current[key]
+    delete gunSubscribed.current[key]
+  }
+
+  function cleanupGunListeners() {
+    offListenerList(gunListenersRef.current)
+    gunListenersRef.current = []
+    var convMap = convListenersRef.current
+    Object.keys(convMap).forEach(function(k) { offListenerList(convMap[k]) })
+    convListenersRef.current = {}
+    gunSubscribed.current = {}
+  }
 
   // ─── NACL E2E ───
   var [naclKeyPair, setNaclKeyPair] = useState(null)
@@ -244,7 +283,7 @@ function App() {
 
   // ═══════════════════ EFFECTS ═══════════════════
   /* eslint-disable react-hooks/exhaustive-deps */
-  useEffect(() => {
+  useEffect(function() {
     if (isConnected && address && address !== account) {
       setAccount(address)
       var provider = new ethers.BrowserProvider(walletProvider)
@@ -256,48 +295,29 @@ function App() {
     }
     // Fallback MetaMask direct si AppKit ne détecte pas
     if (!isConnected && window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+      window.ethereum.request({ method: 'eth_accounts' }).then(function(accounts) {
         if (accounts.length > 0 && !account) {
           setAccount(accounts[0])
           var provider = new ethers.BrowserProvider(window.ethereum)
           verifierAbonnement(accounts[0], provider)
         }
-      }).catch(() => {})
+      }).catch(function() {})
     }
   }, [isConnected, address])
 
-  useEffect(() => {
-    if (account && !naclKeyPair && !naclLoading) {
-      var addrKeyLoad = String(account).toLowerCase()
-      var stored = localStorage.getItem('zonefree-nacl-' + addrKeyLoad)
-      if (stored) {
-        try {
-          var parsed = JSON.parse(stored)
-          setNaclKeyPair({
-            publicKey: naclUtil.decodeBase64(parsed.pub),
-            secretKey: naclUtil.decodeBase64(parsed.sec)
-          })
-          if (!localStorage.getItem('zonefree-nacl-pub-' + addrKeyLoad)) {
-            localStorage.setItem('zonefree-nacl-pub-' + addrKeyLoad, parsed.pub)
-          }
-          if (!localStorage.getItem('zonefree-nacl-sec-' + addrKeyLoad)) {
-            localStorage.setItem('zonefree-nacl-sec-' + addrKeyLoad, parsed.sec)
-          }
-          try {
-            gun.get('zonefree-nacl-keys').get(addrKeyLoad).put({
-              address: addrKeyLoad,
-              pubKey: parsed.pub
-            })
-            gun.get('zonefree-nacl-keys').get(addrKeyLoad).on(function(data) {
-              if (data && data.pubKey) {
-                localStorage.setItem('zonefree-nacl-pub-' + addrKeyLoad, data.pubKey)
-              }
-            })
-          } catch (e) { console.warn('publish nacl pub error:', e) }
-        } catch (e) { console.warn('NaCl: clé locale corrompue') }
-      }
-    }
-  }, [account])
+  useEffect(function() {
+    try {
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.indexOf('zonefree-nacl-sec-') === 0) localStorage.removeItem(k)
+        if (k.indexOf('zonefree-nacl-') === 0
+            && k.indexOf('zonefree-nacl-pub-') !== 0
+            && k.indexOf('zonefree-nacl-sec-') !== 0
+            && k.indexOf('zonefree-nacl-keys') !== 0) {
+          localStorage.removeItem(k)
+        }
+      })
+    } catch (e) {}
+  }, [])
 
   useEffect(function() {
     if (!account) return
@@ -425,7 +445,9 @@ function App() {
 
   useEffect(function() {
     try {
-      gun.get('zonefree-presence').map().on(function(membre) {
+      var presenceRef = gun.get('zonefree-presence').map()
+      trackGunListener(presenceRef)
+      presenceRef.on(function(membre) {
         if (!membre || !membre.address) return
         var addrLower = String(membre.address).toLowerCase()
         setMembresListe(function(prev) {
@@ -525,7 +547,9 @@ function App() {
       gun.get('zonefree-replies-' + rkey).map().once(function(rep) {
         if (rep) handleGunReply(rep, fid)
       })
-      gun.get('zonefree-replies-' + rkey).map().on(function(rep) {
+      var repliesRef = gun.get('zonefree-replies-' + rkey).map()
+      trackGunListener(repliesRef)
+      repliesRef.on(function(rep) {
         if (rep) handleGunReply(rep, fid)
       })
     } catch (e) { console.warn('Gun replies subscribe error:', e) }
@@ -611,7 +635,9 @@ function App() {
       gun.get('zonefree-topics-' + fid).map().once(function(topic) {
         if (topic) handleGunTopic(topic, fid)
       })
-      gun.get('zonefree-topics-' + fid).map().on(function(topic) {
+      var topicsRef = gun.get('zonefree-topics-' + fid).map()
+      trackGunListener(topicsRef)
+      topicsRef.on(function(topic) {
         if (topic) handleGunTopic(topic, fid)
       })
     } catch (e) { console.warn('Gun topics subscribe error:', e) }
@@ -683,7 +709,9 @@ function App() {
       handleSalonData(salonData)
     })
 
-    gun.get('zonefree-registry').map().on(function(salonData, key) {
+    var registryRef = gun.get('zonefree-registry').map()
+    trackGunListener(registryRef)
+    registryRef.on(function(salonData, key) {
       if (!key || key === '_') return
       handleSalonData(salonData)
     })
@@ -699,7 +727,9 @@ function App() {
 
   useEffect(function() {
     try {
-      gun.get('zonefree-reactions').map().on(function(reaction) {
+      var reactionsRef = gun.get('zonefree-reactions').map()
+      trackGunListener(reactionsRef)
+      reactionsRef.on(function(reaction) {
         if (!reaction || !reaction.id) return
         var rid = String(reaction.id)
         if (typeof reaction.likes === 'number') {
@@ -757,12 +787,12 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConversation])
 
-  useEffect(() => { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
-  useEffect(() => {
+  useEffect(function() { localStorage.setItem('zonefree-forums', JSON.stringify(forums)) }, [forums])
+  useEffect(function() {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
     document.body.className = dark ? 'dark' : 'light'
   }, [dark])
-  useEffect(() => { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
+  useEffect(function() { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
   useEffect(function() {
     try {
       var msgsSansImages = messages.map(function(conv) {
@@ -787,13 +817,29 @@ function App() {
     })
   }, [])
 
-  useEffect(() => {
+  useEffect(function() {
+    return function() { cleanupGunListeners() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  var prevConvKeyRef = useRef(null)
+  useEffect(function() {
+    var current = activeConversation && activeConversation.key ? activeConversation.key : null
+    var prev = prevConvKeyRef.current
+    if (prev && prev !== current) {
+      cleanupConvListeners(prev)
+    }
+    prevConvKeyRef.current = current
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation])
+
+  useEffect(function() {
     localStorage.setItem('zonefree-pseudo', pseudo)
   }, [pseudo])
 
 
   // ═══════════════════ NOTIFICATIONS ═══════════════════
-  var demanderNotifications = async () => {
+  var demanderNotifications = async function() {
     if (typeof Notification === 'undefined') {
       alert('Votre navigateur ne supporte pas les notifications.')
       return
@@ -811,14 +857,14 @@ function App() {
     }
   }
 
-  var envoyerNotif = (titre, corps) => {
+  var envoyerNotif = function(titre, corps) {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       try { new Notification(titre, { body: corps, icon: '/favicon.ico' }) } catch (e) {}
     }
   }
 
   // ═══════════════════ UNSTOPPABLE DOMAINS ═══════════════════
-  var resoudreUD = async (address) => {
+  var resoudreUD = async function(address) {
     if (!address) return null
     var endpoints = [
       `https://resolve.unstoppabledomains.com/reverse/${address.toLowerCase()}`,
@@ -837,7 +883,7 @@ function App() {
     return null
   }
 
-  var detecterUD = async () => {
+  var detecterUD = async function() {
     var addr = account || address
     if (!addr) { alert('Connectez votre wallet d\'abord !'); return }
     var domain = await resoudreUD(addr)
@@ -850,19 +896,18 @@ function App() {
   }
 
   // ═══════════════════ LIKES ═══════════════════
-  var toggleLike = (key) => {
+  var toggleLike = function(key) {
     if (!account) { alert('Connectez MetaMask pour liker !'); return }
     if (!estAbonne) { alert('Abonnement requis pour liker !'); return }
     var cur = likes[key] || { count: 0, likedBy: [] }
     var has = cur.likedBy.includes(account)
     var newCount = has ? cur.count - 1 : cur.count + 1
-    setLikes({
-      ...likes,
-      [key]: {
-        count: newCount,
-        likedBy: has ? cur.likedBy.filter(function(a) { return a !== account }) : [...cur.likedBy, account]
-      }
-    })
+    var nextLikes = Object.assign({}, likes)
+    nextLikes[key] = {
+      count: newCount,
+      likedBy: has ? cur.likedBy.filter(function(a) { return a !== account }) : cur.likedBy.concat([account])
+    }
+    setLikes(nextLikes)
     try {
       gun.get('zonefree-reactions').get(String(key)).put({
         id: String(key),
@@ -872,17 +917,21 @@ function App() {
       })
     } catch (e) { console.warn('publish reaction Gun error:', e) }
   }
-  var getLike = (key) => {
+  var getLike = function(key) {
     var l = likes[key] || { count: 0, likedBy: [] }
     return { count: l.count, hasLiked: l.likedBy.includes(account) }
   }
 
   // ═══════════════════ TRI ═══════════════════
-  var sortTopics = (topics, forumId) => {
-    var s = [...topics]
-    if (sortBy === 'popular') return s.sort((a, b) => (likes[`${forumId}-${b.id}`]?.count || 0) - (likes[`${forumId}-${a.id}`]?.count || 0))
-    if (sortBy === 'replies') return s.sort((a, b) => b.replies.length - a.replies.length)
-    return s.sort((a, b) => {
+  var sortTopics = function(topics, forumId) {
+    var s = (topics || []).slice()
+    if (sortBy === 'popular') return s.sort(function(a, b) {
+      var la = likes[forumId + '-' + b.id]
+      var lb = likes[forumId + '-' + a.id]
+      return ((la && la.count) || 0) - ((lb && lb.count) || 0)
+    })
+    if (sortBy === 'replies') return s.sort(function(a, b) { return b.replies.length - a.replies.length })
+    return s.sort(function(a, b) {
       if (a.pinned && !b.pinned) return -1
       if (!a.pinned && b.pinned) return 1
       return b.id - a.id
@@ -920,7 +969,7 @@ function App() {
     return false
   }
 
-  var demarrerConversation = () => {
+  var demarrerConversation = function() {
     if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
     var addrLow = String(newMessageTo.trim()).toLowerCase()
     var accLow = String(account).toLowerCase()
@@ -953,16 +1002,15 @@ function App() {
         } catch (e) { console.warn('lookup nacl pub error:', e) }
       }
       var otherPubB64 = localStorage.getItem('zonefree-nacl-pub-' + otherAddr)
-      var mySecB64 = localStorage.getItem('zonefree-nacl-sec-' + myAddr)
+      var mySecKey = naclKeyPair ? naclKeyPair.secretKey : null
       var content = contenu
       var encrypted = false
-      if (otherPubB64 && mySecB64) {
+      if (otherPubB64 && mySecKey) {
         try {
           var recipientPub = new Uint8Array(atob(otherPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
-          var mySec = new Uint8Array(atob(mySecB64).split('').map(function(c) { return c.charCodeAt(0) }))
           var msgBytes = new TextEncoder().encode(contenu)
           var nonce = nacl.randomBytes(nacl.box.nonceLength)
-          var box = nacl.box(msgBytes, nonce, recipientPub, mySec)
+          var box = nacl.box(msgBytes, nonce, recipientPub, mySecKey)
           content = JSON.stringify({
             enc: btoa(String.fromCharCode.apply(null, box)),
             nonce: btoa(String.fromCharCode.apply(null, nonce)),
@@ -1000,12 +1048,12 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  var envoyerImage = (e) => {
+  var envoyerImage = function(e) {
     try {
       var file = e.target.files[0]
       if (!file || !account || !estAbonne || !activeConversation) return
       var reader = new FileReader()
-      reader.onload = (ev) => {
+      reader.onload = function(ev) {
         try {
           var otherImg = activeConversation.participants.find(function(p) { return !isMe(p) })
           var msg = {
@@ -1093,7 +1141,9 @@ function App() {
     if (!gunSubscribed.current[conv.key]) {
       gunSubscribed.current[conv.key] = true
       try {
-        gun.get(hashConvKey(conv.key)).map().on(onGunMsg)
+        var convMsgsRef = gun.get(hashConvKey(conv.key)).map()
+        trackConvListener(conv.key, convMsgsRef)
+        convMsgsRef.on(onGunMsg)
       } catch (e) { console.warn('Gun subscribe error:', e) }
     }
     if (conv.participants && conv.participants.length === 2) {
@@ -1101,7 +1151,9 @@ function App() {
       if (keyInverse !== conv.key && !gunSubscribed.current[keyInverse]) {
         gunSubscribed.current[keyInverse] = true
         try {
-          gun.get(hashConvKey(keyInverse)).map().on(onGunMsg)
+          var convMsgsInvRef = gun.get(hashConvKey(keyInverse)).map()
+          trackConvListener(conv.key, convMsgsInvRef)
+          convMsgsInvRef.on(onGunMsg)
         } catch (e) { console.warn('Gun subscribe inverse error:', e) }
       }
     }
@@ -1112,36 +1164,36 @@ function App() {
     : 0
 
    // ═══════════════════ NACL E2E ═══════════════════
-  var initNaclKeys = async () => {
+  var initNaclKeys = async function() {
     if (!account) { alert('Connectez votre wallet d\'abord !'); return }
     var provider = walletProvider || window.ethereum
     if (!provider) { alert('Provider wallet introuvable.'); return }
     setNaclLoading(true)
     try {
+      var message = 'ZoneFree E2E Key v1'
+      var messageBytes = new TextEncoder().encode(message)
+      var messageHex = '0x' + Array.from(messageBytes)
+        .map(function(b) { return b.toString(16).padStart(2, '0') }).join('')
       var sig = await provider.request({
         method: 'personal_sign',
-        params: [
-          '0x' + Array.from(new TextEncoder().encode('ZoneFree NaCl key v1'))
-            .map(function(b) { return b.toString(16).padStart(2, '0') }).join(''),
-          address || account
-        ]
+        params: [messageHex, address || account]
       })
       var sigHex = sig.startsWith('0x') ? sig.slice(2) : sig
-      var seed = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16))).slice(0, 32)
+      var sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(function(b) { return parseInt(b, 16) }))
+      var seed = nacl.hash(sigBytes).slice(0, 32)
       var kp = nacl.box.keyPair.fromSecretKey(seed)
       setNaclKeyPair(kp)
       var pubB64 = naclUtil.encodeBase64(kp.publicKey)
-      var secB64 = naclUtil.encodeBase64(kp.secretKey)
       var addrKey = String(account).toLowerCase()
-      localStorage.setItem('zonefree-nacl-' + addrKey, JSON.stringify({ pub: pubB64, sec: secB64 }))
       localStorage.setItem('zonefree-nacl-pub-' + addrKey, pubB64)
-      localStorage.setItem('zonefree-nacl-sec-' + addrKey, secB64)
       try {
         gun.get('zonefree-nacl-keys').get(addrKey).put({
           address: addrKey,
           pubKey: pubB64
         })
-        gun.get('zonefree-nacl-keys').get(addrKey).on(function(data) {
+        var naclInitRef = gun.get('zonefree-nacl-keys').get(addrKey)
+        trackGunListener(naclInitRef)
+        naclInitRef.on(function(data) {
           if (data && data.pubKey) {
             localStorage.setItem('zonefree-nacl-pub-' + addrKey, data.pubKey)
           }
@@ -1157,7 +1209,7 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  var naclEncrypt = (text) => {
+  var naclEncrypt = function(text) {
     if (!naclKeyPair) return String(text)
     try {
       var nonce = nacl.randomBytes(24)
@@ -1175,7 +1227,7 @@ function App() {
   }
 
   // eslint-disable-next-line no-unused-vars
-  var naclDecrypt = (data) => {
+  var naclDecrypt = function(data) {
     if (!data) return '...'
     if (typeof data !== 'string') return String(data)
     if (!naclKeyPair) return data
@@ -1195,7 +1247,7 @@ function App() {
   }
 
   // ═══════════════════ BLOCKCHAIN ═══════════════════
-  var fetchPrix = async (provider) => {
+  var fetchPrix = async function(provider) {
     try {
       var contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
       var prix = await contract.getPrixEnWei()
@@ -1206,7 +1258,7 @@ function App() {
     } catch (e) { console.error('Prix:', e); return null }
   }
 
-  var verifierAbonnement = async (addr, prov) => {
+  var verifierAbonnement = async function(addr, prov) {
     try {
       var provider = prov || new ethers.BrowserProvider(walletProvider || window.ethereum)
       var contract = new ethers.Contract(CONTRACT_ADDRESS, ForumAboABI, provider)
@@ -1222,7 +1274,7 @@ function App() {
 
   var estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
 
-  var sAbonner = async () => {
+  var sAbonner = async function() {
     if (!account) { alert('Connectez votre wallet !'); return }
     try {
       setLoadingAbo(true)
@@ -1243,10 +1295,10 @@ function App() {
   }
 
   // ═══════════════════ NAVIGATION ═══════════════════
-  var openForum = (f) => { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum'); subscribeTopicsForForum(f.id) }
-  var openTopic = (t) => { setActiveTopic(t); setPage('topic') }
-  var goHome = () => { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
-  var goForum = () => { setPage('forum'); setActiveTopic(null) }
+  var openForum = function(f) { setActiveForum(f); setRechercheTopic(''); setCurrentPage(1); setSortBy('date'); setPage('forum'); subscribeTopicsForForum(f.id) }
+  var openTopic = function(t) { setActiveTopic(t); setPage('topic') }
+  var goHome = function() { setPage('home'); setActiveForum(null); setActiveTopic(null); setRecherche('') }
+  var goForum = function() { setPage('forum'); setActiveTopic(null) }
   function shortAddr(addr) { return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '' }
   function displayName(addr) { return pseudo || udDomain || shortAddr(addr) }
   function getPseudoOrAddr(address) {
@@ -1281,7 +1333,7 @@ function App() {
   var prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
 
   // ═══════════════════ FORUM ACTIONS ═══════════════════
-  var creerSalon = () => {
+  var creerSalon = function() {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     var nomValide = String(newSalon.name || '').trim()
@@ -1311,7 +1363,7 @@ function App() {
     } catch (e) { console.warn('publish salon Gun error:', e) }
   }
 
-  var creerTopic = async () => {
+  var creerTopic = async function() {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newTopic.title.trim()) { alert('Donnez un titre !'); return }
@@ -1322,7 +1374,10 @@ function App() {
       date: new Date().toLocaleDateString('fr-FR'),
       timestamp: topicId, forumId: activeForum.id
     }
-    var upd = forums.map(f => f.id === activeForum.id ? { ...f, topics: [topic, ...f.topics] } : f)
+    var upd = forums.map(function(f) {
+      if (f.id !== activeForum.id) return f
+      return Object.assign({}, f, { topics: [topic].concat(f.topics) })
+    })
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setShowNewTopic(false); setNewTopic({ title: '', content: '' })
     try {
@@ -1338,16 +1393,19 @@ function App() {
     } catch (e) { console.warn('publish topic Gun error:', e) }
   }
 
-  var posterReponse = async () => {
+  var posterReponse = async function() {
     if (!account) { alert('Connectez MetaMask !'); return }
     if (!estAbonne) { alert('Abonnement requis !'); return }
     if (!newReply.trim()) { alert('Écrivez un message !'); return }
     var replyId = Date.now()
     var reply = { id: replyId, author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
-    var updTopic = { ...activeTopic, replies: [...activeTopic.replies, reply] }
-    var upd = forums.map(f => f.id === activeForum.id
-      ? { ...f, topics: f.topics.map(t => t.id === activeTopic.id ? updTopic : t) }
-      : f)
+    var updTopic = Object.assign({}, activeTopic, { replies: activeTopic.replies.concat([reply]) })
+    var upd = forums.map(function(f) {
+      if (f.id !== activeForum.id) return f
+      return Object.assign({}, f, {
+        topics: f.topics.map(function(t) { return t.id === activeTopic.id ? updTopic : t })
+      })
+    })
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     setActiveTopic(updTopic); setNewReply('')
     envoyerNotif('💬 Nouvelle réponse', 'Dans : ' + activeTopic.title)
@@ -1366,16 +1424,19 @@ function App() {
     } catch (e) { console.warn('publish reply Gun error:', e) }
   }
 
-  var togglePin = (topicId) => {
+  var togglePin = function(topicId) {
     if (!estAbonne) return
     var newPinned = false
-    var upd = forums.map(f => f.id === activeForum.id
-      ? { ...f, topics: f.topics.map(function(t) {
+    var upd = forums.map(function(f) {
+      if (f.id !== activeForum.id) return f
+      return Object.assign({}, f, {
+        topics: f.topics.map(function(t) {
           if (t.id !== topicId) return t
           newPinned = !t.pinned
           return Object.assign({}, t, { pinned: newPinned })
-        }) }
-      : f)
+        })
+      })
+    })
     setForums(upd); setActiveForum(upd.find(function(f) { return f.id === activeForum.id }))
     try {
       var reactionKey = activeForum.id + '-' + topicId
@@ -1560,7 +1621,7 @@ function App() {
           justifyContent: 'flex-end',
           maxWidth: '70vw'
         }}>
-          <button className="btn btn-ghost" onClick={() => setDark(!dark)} style={{ minWidth: '36px', minHeight: '36px' }}>{dark ? '☀️' : '🌙'}</button>
+          <button className="btn btn-ghost" onClick={function() { setDark(!dark) }} style={{ minWidth: '36px', minHeight: '36px' }}>{dark ? '☀️' : '🌙'}</button>
           {account && (
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <button className="btn btn-ghost" onClick={function() { setPage('messages') }} style={{ fontSize: 16, minWidth: '36px', minHeight: '36px' }}>
@@ -1578,7 +1639,7 @@ function App() {
               }, unreadCount > 9 ? '9+' : String(unreadCount))}
             </div>
           )}
-          <button className="btn btn-ghost" onClick={() => setPage('profil')} style={{ fontSize: 16, minWidth: '36px', minHeight: '36px' }}>👤</button>
+          <button className="btn btn-ghost" onClick={function() { setPage('profil') }} style={{ fontSize: 16, minWidth: '36px', minHeight: '36px' }}>👤</button>
           {account ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button className="btn btn-ghost" onClick={disconnectAll} title="Déconnecter" style={{ fontSize: 14, padding: '6px 10px' }}>
@@ -1593,7 +1654,7 @@ function App() {
               }
             </div>
           ) : (
-            <button className="btn btn-wallet" onClick={() => openModal({ view: 'Connect' })}>
+            <button className="btn btn-wallet" onClick={function() { openModal({ view: 'Connect' }) }}>
               {isConnected ? shortAddr(address) : 'Connecter'}
             </button>
 
@@ -1645,7 +1706,7 @@ function App() {
                   {naclLoading ? <span className="spinner">Signature...</span> : '🔐 Activer E2E'}
                 </button>
               )}
-              <button className="btn btn-primary" onClick={() => setShowNewConversation(true)}>+ Nouveau</button>
+              <button className="btn btn-primary" onClick={function() { setShowNewConversation(true) }}>+ Nouveau</button>
             </div>
           </div>
 
@@ -1765,10 +1826,10 @@ function App() {
                 <h2 style={{ marginBottom: 8, color: '#6366f1' }}>✉️ Nouveau message</h2>
                 {naclKeyPair && <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>Chiffrement NaCl actif — entrez l'adresse du destinataire</p>}
                 <label style={{ fontSize: 13, opacity: 0.7 }}>Adresse du destinataire</label>
-                <input value={newMessageTo} onChange={e => setNewMessageTo(e.target.value)} style={inputStyle} placeholder="0x... ou 0xABCD...1234" />
+                <input value={newMessageTo} onChange={function(e) { setNewMessageTo(e.target.value) }} style={inputStyle} placeholder="0x... ou 0xABCD...1234" />
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button className="btn btn-primary" onClick={demarrerConversation} style={{ flex: 1 }}>Démarrer</button>
-                  <button className="btn btn-ghost" onClick={() => setShowNewConversation(false)} style={{ flex: 1 }}>Annuler</button>
+                  <button className="btn btn-ghost" onClick={function() { setShowNewConversation(false) }} style={{ flex: 1 }}>Annuler</button>
                 </div>
               </div>
             </div>
@@ -1825,7 +1886,7 @@ function App() {
               var displayContent = m.content
               if (m.content && typeof m.content === 'string' && m.content.indexOf('{"enc":') === 0) {
                 try {
-                  var mySecB64R = localStorage.getItem('zonefree-nacl-sec-' + String(account || '').toLowerCase())
+                  var mySecRKey = naclKeyPair ? naclKeyPair.secretKey : null
                   var parsed = JSON.parse(m.content)
                   var otherPartR = ''
                   if (activeConversation && activeConversation.participants) {
@@ -1835,12 +1896,11 @@ function App() {
                     }
                   }
                   var senderPubB64 = otherPartR ? localStorage.getItem('zonefree-nacl-pub-' + otherPartR) : null
-                  if (mySecB64R && senderPubB64) {
+                  if (mySecRKey && senderPubB64) {
                     var encBytes = new Uint8Array(atob(parsed.enc).split('').map(function(c) { return c.charCodeAt(0) }))
                     var nonceBytes = new Uint8Array(atob(parsed.nonce).split('').map(function(c) { return c.charCodeAt(0) }))
-                    var mySecR = new Uint8Array(atob(mySecB64R).split('').map(function(c) { return c.charCodeAt(0) }))
                     var senderPub = new Uint8Array(atob(senderPubB64).split('').map(function(c) { return c.charCodeAt(0) }))
-                    var decrypted = nacl.box.open(encBytes, nonceBytes, senderPub, mySecR)
+                    var decrypted = nacl.box.open(encBytes, nonceBytes, senderPub, mySecRKey)
                     displayContent = decrypted ? new TextDecoder().decode(decrypted) : '[clé incorrecte]'
                   } else {
                     displayContent = '[clé manquante]'
@@ -1932,7 +1992,7 @@ function App() {
             <div style={{ fontSize: 64, marginBottom: 12 }}>🦊</div>
             {editPseudo ? (
               <div style={{ marginBottom: 16 }}>
-                <input value={newPseudo} onChange={e => setNewPseudo(e.target.value)}
+                <input value={newPseudo} onChange={function(e) { setNewPseudo(e.target.value) }}
                   style={inputStyleCenter}
                   placeholder="Votre pseudo..." autoFocus />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
@@ -1942,13 +2002,13 @@ function App() {
                     localStorage.setItem('zonefree-pseudo', clean)
                     setEditPseudo(false)
                   }}>✓ Sauvegarder</button>
-                  <button className="btn btn-ghost" onClick={() => setEditPseudo(false)}>Annuler</button>
+                  <button className="btn btn-ghost" onClick={function() { setEditPseudo(false) }}>Annuler</button>
                 </div>
               </div>
             ) : (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 22, fontWeight: 700 }}>{pseudo || udDomain || shortAddr(account)}</div>
-                <button className="btn btn-ghost" onClick={() => { setNewPseudo(pseudo); setEditPseudo(true) }}
+                <button className="btn btn-ghost" onClick={function() { setNewPseudo(pseudo); setEditPseudo(true) }}
                   style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>
                   ✏️ Modifier le pseudo
                 </button>
@@ -2116,11 +2176,11 @@ function App() {
           </div>
           <div className="search-container">
             <span className="search-icon">🔍</span>
-            <input className="search-input" placeholder="Rechercher un salon..." value={recherche} onChange={e => setRecherche(e.target.value)} />
-            {recherche && <button className="search-clear" onClick={() => setRecherche('')}>✕</button>}
+            <input className="search-input" placeholder="Rechercher un salon..." value={recherche} onChange={function(e) { setRecherche(e.target.value) }} />
+            {recherche && <button className="search-clear" onClick={function() { setRecherche('') }}>✕</button>}
           </div>
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <button className="btn btn-primary" onClick={() => setShowNewSalon(true)} style={{ fontSize: 16, padding: '12px 28px' }}>
+            <button className="btn btn-primary" onClick={function() { setShowNewSalon(true) }} style={{ fontSize: 16, padding: '12px 28px' }}>
               + Créer un nouveau salon
             </button>
           </div>
@@ -2198,7 +2258,7 @@ function App() {
             <h2>{activeForum.emoji} {activeForum.name}</h2>
             <p style={{ opacity: 0.6, marginTop: 6 }}>{activeForum.description}</p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-              <button className="new-topic-btn" onClick={() => setShowNewTopic(true)}>+ Nouveau topic</button>
+              <button className="new-topic-btn" onClick={function() { setShowNewTopic(true) }}>+ Nouveau topic</button>
               {(function() {
                 var peutSupprimer = (account && activeForum.creator &&
                   String(activeForum.creator).toLowerCase() === String(account).toLowerCase())
@@ -2227,8 +2287,8 @@ function App() {
           </div>
           <div className="search-container" style={{ margin: '0 0 16px' }}>
             <span className="search-icon">🔍</span>
-            <input className="search-input" placeholder="Rechercher un topic..." value={rechercheTopic} onChange={e => { setRechercheTopic(e.target.value); setCurrentPage(1) }} />
-            {rechercheTopic && <button className="search-clear" onClick={() => setRechercheTopic('')}>✕</button>}
+            <input className="search-input" placeholder="Rechercher un topic..." value={rechercheTopic} onChange={function(e) { setRechercheTopic(e.target.value); setCurrentPage(1) }} />
+            {rechercheTopic && <button className="search-clear" onClick={function() { setRechercheTopic('') }}>✕</button>}
           </div>
           <div className="sort-bar">
             <span style={{ fontSize: 13, opacity: 0.6 }}>Trier par </span>
@@ -2393,7 +2453,7 @@ function App() {
             <h3 style={{ marginBottom: 16 }}>✍️ Votre réponse</h3>
             {!account && <p style={{ opacity: 0.6, marginBottom: 12, fontSize: 14 }}>Connectez MetaMask pour répondre</p>}
             {account && !estAbonne && <p style={{ color: '#f59e0b', marginBottom: 12, fontSize: 14 }}>Abonnez-vous pour répondre</p>}
-            <textarea value={newReply} onChange={e => setNewReply(e.target.value)} placeholder="Écrivez votre réponse..." rows={4}
+            <textarea value={newReply} onChange={function(e) { setNewReply(e.target.value) }} placeholder="Écrivez votre réponse..." rows={4}
               style={inputStyleResize} disabled={!estAbonne} />
             <button className="btn btn-primary" onClick={posterReponse} style={{ padding: '12px 28px' }} disabled={!estAbonne || !account}>
               Poster la réponse
@@ -2408,14 +2468,14 @@ function App() {
           <div style={{ background: dark ? '#161b22' : 'white', borderRadius: 16, padding: 32, width: 420, border: '1.5px solid #6366f1' }}>
             <h2 style={{ marginBottom: 24, color: '#6366f1' }}>✨ Nouveau salon</h2>
             <label style={{ fontSize: 13, opacity: 0.7 }}>Emoji</label>
-            <input value={newSalon.emoji} onChange={e => setNewSalon({ ...newSalon, emoji: e.target.value })} style={inputStyle} placeholder="💡" />
+            <input value={newSalon.emoji} onChange={function(e) { setNewSalon(Object.assign({}, newSalon, { emoji: e.target.value })) }} style={inputStyle} placeholder="💡" />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Nom</label>
-            <input value={newSalon.name} onChange={e => setNewSalon({ ...newSalon, name: e.target.value })} style={inputStyle} placeholder="Ex: Sciences, Art..." />
+            <input value={newSalon.name} onChange={function(e) { setNewSalon(Object.assign({}, newSalon, { name: e.target.value })) }} style={inputStyle} placeholder="Ex: Sciences, Art..." />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Description</label>
-            <input value={newSalon.description} onChange={e => setNewSalon({ ...newSalon, description: e.target.value })} style={inputStyle} placeholder="Description courte" />
+            <input value={newSalon.description} onChange={function(e) { setNewSalon(Object.assign({}, newSalon, { description: e.target.value })) }} style={inputStyle} placeholder="Description courte" />
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-primary" onClick={creerSalon} style={{ flex: 1 }}>Créer</button>
-              <button className="btn btn-ghost" onClick={() => setShowNewSalon(false)} style={{ flex: 1 }}>Annuler</button>
+              <button className="btn btn-ghost" onClick={function() { setShowNewSalon(false) }} style={{ flex: 1 }}>Annuler</button>
             </div>
           </div>
         </div>
@@ -2427,12 +2487,12 @@ function App() {
           <div style={{ background: dark ? '#161b22' : 'white', borderRadius: 16, padding: 32, width: 500, border: '1.5px solid #6366f1' }}>
             <h2 style={{ marginBottom: 24, color: '#6366f1' }}>📝 Nouveau topic</h2>
             <label style={{ fontSize: 13, opacity: 0.7 }}>Titre</label>
-            <input value={newTopic.title} onChange={e => setNewTopic({ ...newTopic, title: e.target.value })} style={inputStyle} placeholder="Titre..." />
+            <input value={newTopic.title} onChange={function(e) { setNewTopic(Object.assign({}, newTopic, { title: e.target.value })) }} style={inputStyle} placeholder="Titre..." />
             <label style={{ fontSize: 13, opacity: 0.7 }}>Contenu</label>
-            <textarea value={newTopic.content} onChange={e => setNewTopic({ ...newTopic, content: e.target.value })} style={inputStyleResize} rows={4} placeholder="Développez..." />
+            <textarea value={newTopic.content} onChange={function(e) { setNewTopic(Object.assign({}, newTopic, { content: e.target.value })) }} style={inputStyleResize} rows={4} placeholder="Développez..." />
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-primary" onClick={creerTopic} style={{ flex: 1 }}>Publier</button>
-              <button className="btn btn-ghost" onClick={() => setShowNewTopic(false)} style={{ flex: 1 }}>Annuler</button>
+              <button className="btn btn-ghost" onClick={function() { setShowNewTopic(false) }} style={{ flex: 1 }}>Annuler</button>
             </div>
           </div>
         </div>
