@@ -166,6 +166,11 @@ function App() {
   var disconnectAll = async function() {
     try { await disconnect() } catch(e) {}
     try { cleanupGunListeners() } catch (e) {}
+    try {
+      Object.keys(sessionStorage).forEach(function(k) {
+        if (k.indexOf('znf-nacl-') === 0) sessionStorage.removeItem(k)
+      })
+    } catch (e) {}
     setAccount(null)
     setEstAbonne(false)
     setNaclKeyPair(null)
@@ -272,6 +277,8 @@ function App() {
   // ─── NACL E2E ───
   var [naclKeyPair, setNaclKeyPair] = useState(null)
   var [naclLoading, setNaclLoading] = useState(false)
+  var [pubKeysKnown, setPubKeysKnown] = useState({})
+  var [convChiffrees, setConvChiffrees] = useState({})
 
   // ─── NOTIFICATIONS ───
   var [notifPermission, setNotifPermission] = useState(
@@ -318,6 +325,24 @@ function App() {
       })
     } catch (e) {}
   }, [])
+
+  useEffect(function() {
+    if (!account) return
+    if (naclKeyPair) return
+    try {
+      var addrKeySS = String(account).toLowerCase()
+      var pubB64SS = sessionStorage.getItem('znf-nacl-pub-' + addrKeySS)
+      var secB64SS = sessionStorage.getItem('znf-nacl-sec-' + addrKeySS)
+      if (pubB64SS && secB64SS) {
+        setNaclKeyPair({
+          publicKey: naclUtil.decodeBase64(pubB64SS),
+          secretKey: naclUtil.decodeBase64(secB64SS)
+        })
+        try { localStorage.setItem('zonefree-nacl-pub-' + addrKeySS, pubB64SS) } catch (e) {}
+      }
+    } catch (e) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account])
 
   useEffect(function() {
     if (!account) return
@@ -765,6 +790,55 @@ function App() {
   }, [])
 
   useEffect(function() {
+    try {
+      var naclKeysRef = gun.get('zonefree-nacl-keys').map()
+      trackGunListener(naclKeysRef)
+      naclKeysRef.on(function(data, key) {
+        if (!data || !data.pubKey) return
+        var addr = String(data.address || key || '').toLowerCase()
+        if (!addr || addr === '_') return
+        try { localStorage.setItem('zonefree-nacl-pub-' + addr, data.pubKey) } catch (e) {}
+        setPubKeysKnown(function(prev) {
+          if (prev[addr]) return prev
+          var next = Object.assign({}, prev)
+          next[addr] = true
+          return next
+        })
+      })
+    } catch (e) { console.warn('Gun nacl-keys subscribe error:', e) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(function() {
+    var next = {}
+    for (var i = 0; i < messages.length; i++) {
+      var conv = messages[i]
+      if (!conv) continue
+      var hasEncMsg = (conv.msgs || []).some(function(m) {
+        return m && (m.encrypted === true
+          || (typeof m.content === 'string' && m.content.indexOf('{"enc":') === 0))
+      })
+      var other = null
+      if (conv.participants) {
+        for (var p = 0; p < conv.participants.length; p++) {
+          if (!isMe(conv.participants[p])) { other = conv.participants[p]; break }
+        }
+      }
+      var otherAddr = String(other || '').toLowerCase()
+      var hasPubKey = false
+      if (otherAddr) {
+        if (pubKeysKnown[otherAddr]) hasPubKey = true
+        else {
+          try { hasPubKey = !!localStorage.getItem('zonefree-nacl-pub-' + otherAddr) } catch (e) {}
+        }
+      }
+      next[conv.id] = hasEncMsg || hasPubKey
+    }
+    setConvChiffrees(next)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, pubKeysKnown, account])
+
+  useEffect(function() {
     if (!activeConversation || !activeConversation.key) return
     var k = activeConversation.key
     setMessages(function(prev) {
@@ -1184,8 +1258,13 @@ function App() {
       var kp = nacl.box.keyPair.fromSecretKey(seed)
       setNaclKeyPair(kp)
       var pubB64 = naclUtil.encodeBase64(kp.publicKey)
+      var secB64 = naclUtil.encodeBase64(kp.secretKey)
       var addrKey = String(account).toLowerCase()
       localStorage.setItem('zonefree-nacl-pub-' + addrKey, pubB64)
+      try {
+        sessionStorage.setItem('znf-nacl-pub-' + addrKey, pubB64)
+        sessionStorage.setItem('znf-nacl-sec-' + addrKey, secB64)
+      } catch (e) {}
       try {
         gun.get('zonefree-nacl-keys').get(addrKey).put({
           address: addrKey,
@@ -1321,14 +1400,12 @@ function App() {
     var accLow = String(account).toLowerCase()
     var key = getConvKey(accLow, addrLow)
     var existing = messages.find(function(m) { return m.key === key })
-    if (existing) {
-      setActiveConversation(existing)
-    } else {
-      var nc = { id: Date.now(), key: key, participants: [accLow, addrLow], msgs: [] }
-      setMessages(function(prev) { return prev.concat([nc]) })
-      setActiveConversation(nc)
+    var conv = existing
+    if (!conv) {
+      conv = { id: Date.now(), key: key, participants: [accLow, addrLow], msgs: [] }
+      setMessages(function(prev) { return prev.concat([conv]) })
     }
-    setPage('conversation')
+    ouvrirConversation(conv)
   }
   var prixEnETH = prixETH ? parseFloat(ethers.formatEther(prixETH)).toFixed(6) : '...'
 
@@ -1743,6 +1820,7 @@ function App() {
                   var participants = (conv.participants || []).map(function(p) { return String(p).toLowerCase() })
                   var peutSupprimerConv = (account && participants.indexOf(accLow) !== -1)
                     || (account && accLow === SUPER_ADMIN.toLowerCase())
+                  var convChiffree = !!convChiffrees[conv.id]
                   return React.createElement('div', {
                     key: conv.id,
                     className: 'conversation-item',
@@ -1751,7 +1829,13 @@ function App() {
                   },
                     React.createElement('div', {className: 'conv-avatar'}, '🔐'),
                     React.createElement('div', {className: 'conv-info', style: { flex: 1, minWidth: 0 }},
-                      React.createElement('div', {className: 'conv-name'}, getPseudoOrAddr(other)),
+                      React.createElement('div', {className: 'conv-name'},
+                        React.createElement('span', {
+                          title: convChiffree ? 'Chiffrement disponible' : 'Pas de clé connue',
+                          style: { marginRight: 6, fontSize: 14 }
+                        }, convChiffree ? '🔒' : '🔓'),
+                        getPseudoOrAddr(other)
+                      ),
                       React.createElement('div', {className: 'conv-preview'}, preview)
                     ),
                     peutSupprimerConv && React.createElement('button', {
@@ -1789,6 +1873,11 @@ function App() {
                     autres.map(function(m) {
                       var isOnline = m.lastSeen && (Date.now() - m.lastSeen) < 5 * 60 * 1000
                       var label = (m.pseudo && String(m.pseudo).trim()) ? m.pseudo : shortAddr(m.address)
+                      var memberAddrLow = String(m.address || '').toLowerCase()
+                      var memberHasKey = !!pubKeysKnown[memberAddrLow]
+                      if (!memberHasKey && memberAddrLow) {
+                        try { memberHasKey = !!localStorage.getItem('zonefree-nacl-pub-' + memberAddrLow) } catch (e) {}
+                      }
                       return React.createElement('div', {
                         key: m.address,
                         style: {
@@ -1799,7 +1888,13 @@ function App() {
                         }
                       },
                         React.createElement('div', { style: { fontSize: 22 } }, m.avatar || '👤'),
-                        React.createElement('div', { style: { flex: 1, fontWeight: 600 } }, label),
+                        React.createElement('div', { style: { flex: 1, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 } },
+                          React.createElement('span', {
+                            title: memberHasKey ? 'Clé publique connue' : 'Pas de clé publique',
+                            style: { fontSize: 13 }
+                          }, memberHasKey ? '🔒' : '🔓'),
+                          React.createElement('span', null, label)
+                        ),
                         React.createElement('span', {
                           title: isOnline ? 'En ligne' : 'Hors ligne',
                           style: {
@@ -1869,6 +1964,28 @@ function App() {
           }, '← Retour')}
           </div>
           <h2>💬 {getPseudoOrAddr(activeConversation.participants.find(function(p) { return !isMe(p) }) || activeConversation.participants[0])}</h2>
+          {(function() {
+            var otherConv = null
+            if (activeConversation && activeConversation.participants) {
+              for (var pc = 0; pc < activeConversation.participants.length; pc++) {
+                if (!isMe(activeConversation.participants[pc])) { otherConv = activeConversation.participants[pc]; break }
+              }
+            }
+            var otherConvLow = String(otherConv || '').toLowerCase()
+            var otherHasKey = otherConvLow
+              ? (!!pubKeysKnown[otherConvLow] || !!localStorage.getItem('zonefree-nacl-pub-' + otherConvLow))
+              : false
+            var chiffreActif = !!naclKeyPair && otherHasKey
+            return React.createElement('div', {
+              style: {
+                fontSize: 12,
+                marginTop: -6,
+                marginBottom: 12,
+                color: chiffreActif ? '#22c55e' : '#f59e0b',
+                opacity: 0.85
+              }
+            }, chiffreActif ? '🔒 Chiffrement actif' : '🔓 Messages non chiffrés')
+          })()}
           <div className="chat-container">
             {activeConversation.msgs.length === 0 && (
               <div style={{textAlign:'center', opacity:0.4, marginTop:40}}>Aucun message — Dites bonjour ! 👋</div>
