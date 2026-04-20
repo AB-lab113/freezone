@@ -10,10 +10,10 @@ import Gun from 'gun/gun'
 require('gun/lib/webrtc')
 var gun = Gun({
   peers: [
-    'https://gun-relay-zonefree_33603.app.runonflux.io/gun'
-  ],
-  rtc: true
-})
+    'https://gun-relay-production-974a.up.railway.app/gun',
+    'https://gun-relay-zonefree_20900.app.runonflux.io/gun'
+  ]
+});
 
 var CONTRACT_ADDRESS = '0xdb410a6dfcb8fe8f78b7b2783bb674ca0af114bd'
 var TOPICS_PAR_PAGE = 5
