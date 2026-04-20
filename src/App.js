@@ -10,7 +10,7 @@ import Gun from 'gun/gun'
 require('gun/lib/webrtc')
 var gun = Gun({
   peers: [
-    'https://gun-relay-production-974a.up.railway.app/gun'
+    'https://gun-relay-zonefree.app.runonflux.io/gun'
   ],
   rtc: true
 })
