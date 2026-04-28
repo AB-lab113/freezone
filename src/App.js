@@ -332,8 +332,8 @@ function App() {
     if (naclKeyPair) return
     try {
       var addrKeySS = String(account).toLowerCase()
-      var pubB64SS = sessionStorage.getItem('znf-nacl-pub-' + addrKeySS)
-      var secB64SS = sessionStorage.getItem('znf-nacl-sec-' + addrKeySS)
+      var pubB64SS = localStorage.getItem('znf-nacl-pub-' + addrKeySS)
+      var secB64SS = localStorage.getItem('znf-nacl-sec-' + addrKeySS)
       if (pubB64SS && secB64SS) {
         setNaclKeyPair({
           publicKey: naclUtil.decodeBase64(pubB64SS),
@@ -1263,8 +1263,8 @@ function App() {
       var addrKey = String(account).toLowerCase()
       localStorage.setItem('zonefree-nacl-pub-' + addrKey, pubB64)
       try {
-        sessionStorage.setItem('znf-nacl-pub-' + addrKey, pubB64)
-        sessionStorage.setItem('znf-nacl-sec-' + addrKey, secB64)
+        localStorage.setItem('znf-nacl-pub-' + addrKey, pubB64)
+        localStorage.setItem('znf-nacl-sec-' + addrKey, secB64)
       } catch (e) {}
       try {
         gun.get('zonefree-nacl-keys').get(addrKey).put({
