@@ -168,8 +168,8 @@ function App() {
     try { await disconnect() } catch(e) {}
     try { cleanupGunListeners() } catch (e) {}
     try {
-      Object.keys(sessionStorage).forEach(function(k) {
-        if (k.indexOf('znf-nacl-') === 0) sessionStorage.removeItem(k)
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.indexOf('znf-nacl-') === 0) localStorage.removeItem(k)
       })
     } catch (e) {}
     setAccount(null)
