@@ -11,7 +11,7 @@ require('gun/lib/webrtc')
 var gun = Gun({
   peers: [
     'https://gun-relay-zonefree_33603.app.runonflux.io/gun',
-    'https://gun.eco/gun'
+    'https://gun-relay-blabla_38270.app.runonflux.io/gun'
   ]
 });
 
