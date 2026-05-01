@@ -866,6 +866,7 @@ function App() {
   useEffect(function() {
     localStorage.setItem('zonefree-dark', JSON.stringify(dark))
     document.body.className = dark ? 'dark' : 'light'
+    document.documentElement.className = dark ? 'dark' : 'light'
   }, [dark])
   useEffect(function() { localStorage.setItem('zonefree-likes', JSON.stringify(likes)) }, [likes])
   useEffect(function() {

@@ -3,6 +3,8 @@
 body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; transition: background 0.3s ease, color 0.3s ease; }
 body.dark  { background: #0d1117; color: #e6edf3; }
 body.light { background: #f0f2ff; color: #1a1a2e; }
+html.dark  { background: #0d1117; }
+html.light { background: #f0f2ff; }
 
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
