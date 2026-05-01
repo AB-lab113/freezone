@@ -916,7 +916,7 @@ function App() {
   // ═══════════════════ NOTIFICATIONS ═══════════════════
   var demanderNotifications = async function() {
     if (typeof Notification === 'undefined') {
-      alert('Votre navigateur ne supporte pas les notifications.')
+      console.log('Votre navigateur ne supporte pas les notifications.')
       return
     }
     try {
@@ -925,10 +925,10 @@ function App() {
       if (p === 'granted') {
         new Notification('🔔 ZoneFree', { body: 'Notifications activées avec succès !', icon: '/favicon.ico' })
       } else {
-        alert('Notifications refusées. Autorisez-les dans les paramètres du navigateur.')
+        console.log('Notifications refusées. Autorisez-les dans les paramètres du navigateur.')
       }
     } catch (e) {
-      alert('Erreur notifications : ' + e.message)
+      console.log('Erreur notifications : ' + e.message)
     }
   }
 
@@ -960,20 +960,20 @@ function App() {
 
   var detecterUD = async function() {
     var addr = account || address
-    if (!addr) { alert('Connectez votre wallet d\'abord !'); return }
+    if (!addr) { console.log('Connectez votre wallet d\'abord !'); return }
     var domain = await resoudreUD(addr)
     if (domain) {
       setUdDomain(domain)
-      alert(`✅ Domaine trouvé : ${domain}`)
+      console.log(`✅ Domaine trouvé : ${domain}`)
     } else {
-      alert(`Aucun domaine .x trouvé pour ce wallet.\n\nCela peut être normal si le domaine est récent ou si l'API UD est indisponible temporairement.`)
+      console.log(`Aucun domaine .x trouvé pour ce wallet.\n\nCela peut être normal si le domaine est récent ou si l'API UD est indisponible temporairement.`)
     }
   }
 
   // ═══════════════════ LIKES ═══════════════════
   var toggleLike = function(key) {
-    if (!account) { alert('Connectez MetaMask pour liker !'); return }
-    if (!estAbonne) { alert('Abonnement requis pour liker !'); return }
+    if (!account) { console.log('Connectez MetaMask pour liker !'); return }
+    if (!estAbonne) { console.log('Abonnement requis pour liker !'); return }
     var cur = likes[key] || { count: 0, likedBy: [] }
     var has = cur.likedBy.includes(account)
     var newCount = has ? cur.count - 1 : cur.count + 1
@@ -1045,7 +1045,7 @@ function App() {
   }
 
   var demarrerConversation = function() {
-    if (!newMessageTo.trim()) { alert('Entrez une adresse !'); return }
+    if (!newMessageTo.trim()) { console.log('Entrez une adresse !'); return }
     var addrLow = String(newMessageTo.trim()).toLowerCase()
     var accLow = String(account).toLowerCase()
     var key = getConvKey(accLow, addrLow)
@@ -1147,13 +1147,13 @@ function App() {
           transporterMessage(activeConversation, msg)
         } catch (err) {
           console.error('envoyerImage onload crash:', err)
-          alert('Erreur envoi image: ' + err.message)
+          console.log('Erreur envoi image: ' + err.message)
         }
       }
       reader.readAsDataURL(file)
     } catch (err) {
       console.error('envoyerImage crash:', err)
-      alert('Erreur envoi image: ' + err.message)
+      console.log('Erreur envoi image: ' + err.message)
     }
   }
 
@@ -1240,9 +1240,9 @@ function App() {
 
    // ═══════════════════ NACL E2E ═══════════════════
   var initNaclKeys = async function() {
-    if (!account) { alert('Connectez votre wallet d\'abord !'); return }
+    if (!account) { console.log('Connectez votre wallet d\'abord !'); return }
     var provider = walletProvider || window.ethereum
-    if (!provider) { alert('Provider wallet introuvable.'); return }
+    if (!provider) { console.log('Provider wallet introuvable.'); return }
     setNaclLoading(true)
     try {
       var message = 'ZoneFree E2E Key v1'
@@ -1282,7 +1282,7 @@ function App() {
       envoyerNotif('🔐 NaCl E2E actif', 'Chiffrement Curve25519 activé !')
     } catch (e) {
       console.error('NaCl init error:', e)
-      alert('Signature refusée. Le chiffrement E2E ne sera pas activé.')
+      console.log('Signature refusée. Le chiffrement E2E ne sera pas activé.')
     } finally {
       setNaclLoading(false)
     }
@@ -1355,7 +1355,7 @@ function App() {
   var estGratuit = totalAbonnes !== null && totalAbonnes < maxGratuit
 
   var sAbonner = async function() {
-    if (!account) { alert('Connectez votre wallet !'); return }
+    if (!account) { console.log('Connectez votre wallet !'); return }
     try {
       setLoadingAbo(true)
       var provider = new ethers.BrowserProvider(walletProvider || window.ethereum)
@@ -1367,10 +1367,10 @@ function App() {
       setEstAbonne(true)
       await verifierAbonnement(account)
       envoyerNotif('🎉 ZoneFree', 'Abonnement activé pour 30 jours !')
-      alert(estGratuit
+      console.log(estGratuit
         ? '🎁 Abonnement GRATUIT activé ! Bienvenue Early Adopter !'
         : '✅ Abonnement activé pour 30 jours !')
-    } catch (e) { alert('Erreur : ' + e.message) }
+    } catch (e) { console.log('Erreur : ' + e.message) }
     finally { setLoadingAbo(false) }
   }
 
@@ -1412,11 +1412,11 @@ function App() {
 
   // ═══════════════════ FORUM ACTIONS ═══════════════════
   var creerSalon = function() {
-    if (!account) { alert('Connectez MetaMask !'); return }
-    if (!estAbonne) { alert('Abonnement requis !'); return }
+    if (!account) { console.log('Connectez MetaMask !'); return }
+    if (!estAbonne) { console.log('Abonnement requis !'); return }
     var nomValide = String(newSalon.name || '').trim()
     if (nomValide.length < 3) {
-      alert('Le nom du salon doit faire au moins 3 caractères')
+      console.log('Le nom du salon doit faire au moins 3 caractères')
       return
     }
     var salonId = String(Date.now())
@@ -1442,9 +1442,9 @@ function App() {
   }
 
   var creerTopic = async function() {
-    if (!account) { alert('Connectez MetaMask !'); return }
-    if (!estAbonne) { alert('Abonnement requis !'); return }
-    if (!newTopic.title.trim()) { alert('Donnez un titre !'); return }
+    if (!account) { console.log('Connectez MetaMask !'); return }
+    if (!estAbonne) { console.log('Abonnement requis !'); return }
+    if (!newTopic.title.trim()) { console.log('Donnez un titre !'); return }
     var topicId = Date.now()
     var topic = {
       id: topicId, title: newTopic.title, content: newTopic.content,
@@ -1472,9 +1472,9 @@ function App() {
   }
 
   var posterReponse = async function() {
-    if (!account) { alert('Connectez MetaMask !'); return }
-    if (!estAbonne) { alert('Abonnement requis !'); return }
-    if (!newReply.trim()) { alert('Écrivez un message !'); return }
+    if (!account) { console.log('Connectez MetaMask !'); return }
+    if (!estAbonne) { console.log('Abonnement requis !'); return }
+    if (!newReply.trim()) { console.log('Écrivez un message !'); return }
     var replyId = Date.now()
     var reply = { id: replyId, author: displayName(account), content: newReply, date: new Date().toLocaleDateString('fr-FR') }
     var updTopic = Object.assign({}, activeTopic, { replies: activeTopic.replies.concat([reply]) })
@@ -2284,7 +2284,7 @@ function App() {
         <div>
           <div className="hero">
             <div className="badge">Décentralisé • Libre • Privé</div>
-            <h1>Bienvenue sur <span>Zone Free</span></h1>
+            <h1><span>Zone Free</span></h1>
             <p>Le forum décentralisé où la parole est libre. Abonnement sécurisé par Ethereum.</p>
             {estGratuit && totalAbonnes !== null && (
               <div style={{ fontSize: 13, color: '#22c55e', marginTop: 8, fontWeight: 600 }}>
