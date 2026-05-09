@@ -26,7 +26,7 @@ createAppKit({
   metadata: {
     name: 'Zone Free',
     description: 'Forum décentralisé - Libre et Privé',
-    url: 'https://freezone-kappa.vercel.app',
+    url: 'https://zonefree.x',
     icons: []
   },
   features: { analytics: false },
