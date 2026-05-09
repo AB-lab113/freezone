@@ -26,7 +26,7 @@ createAppKit({
   metadata: {
     name: 'Zone Free',
     description: 'Forum décentralisé - Libre et Privé',
-    url: 'https://zonefree.x',
+    url: window.location.origin,
     icons: []
   },
   features: { analytics: false },
