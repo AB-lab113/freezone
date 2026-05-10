@@ -288,6 +288,12 @@ function App() {
     try { return JSON.parse(localStorage.getItem('freezone-membres') || '[]') } catch (e) { return [] }
   })
 
+  // ─── FLASH CHAT ───
+  var [flashMsgs, setFlashMsgs] = useState([])
+  var [flashPseudo, setFlashPseudo] = useState(localStorage.getItem('zf-flash-pseudo') || '')
+  var [flashInput, setFlashInput] = useState('')
+  var [flashPseudoEdit, setFlashPseudoEdit] = useState('')
+
   // ═══════════════════ EFFECTS ═══════════════════
   /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(function() {
@@ -497,6 +503,52 @@ function App() {
     } catch (e) { console.warn('Gun presence subscribe error:', e) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ─── FLASH CHAT GUN LISTENER ───
+  useEffect(function() {
+    var collected = {}
+    function refreshList() {
+      var now = Date.now()
+      var arr = []
+      var keys = Object.keys(collected)
+      for (var i = 0; i < keys.length; i++) {
+        var m = collected[keys[i]]
+        if (m && typeof m.timestamp === 'number' && (now - m.timestamp) < 3600000 && m.text && m.pseudo) {
+          arr.push(m)
+        } else {
+          delete collected[keys[i]]
+        }
+      }
+      arr.sort(function(a, b) { return a.timestamp - b.timestamp })
+      setFlashMsgs(arr)
+    }
+    try {
+      var flashRef = gun.get('zonefree-flash').map()
+      trackGunListener(flashRef)
+      flashRef.on(function(msg, key) {
+        if (!msg) return
+        if (typeof msg.timestamp !== 'number' || !msg.text || !msg.pseudo) return
+        collected[key] = { pseudo: String(msg.pseudo), text: String(msg.text), timestamp: msg.timestamp }
+        refreshList()
+      })
+    } catch (e) { console.warn('Gun flash subscribe error:', e) }
+    var iv = setInterval(refreshList, 60000)
+    return function() { clearInterval(iv) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function sendFlashMessage() {
+    if (!flashPseudo || !flashInput.trim()) return
+    var ts = Date.now()
+    try {
+      gun.get('zonefree-flash').get(String(ts)).put({
+        pseudo: flashPseudo,
+        text: flashInput.trim(),
+        timestamp: ts
+      })
+    } catch (e) { console.warn('sendFlashMessage error:', e) }
+    setFlashInput('')
+  }
 
   var topicSubscribed = useRef({})
   var replySubscribed = useRef({})
@@ -2282,6 +2334,75 @@ function App() {
       {/* ══════════════ PAGE HOME ══════════════ */}
       {page === 'home' && (
         <div>
+          <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 8, flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>
+                ⚡ Salon Flash <span style={{ opacity: 0.6, fontWeight: 400, fontSize: 13 }}>— disparaît après 1h</span>
+              </h3>
+              {flashPseudo && (
+                <button
+                  onClick={function() {
+                    localStorage.removeItem('zf-flash-pseudo')
+                    setFlashPseudo('')
+                    setFlashPseudoEdit('')
+                  }}
+                  style={{ fontSize: 12, padding: '4px 10px', background: 'transparent', border: '1px solid rgba(127,127,127,0.4)', color: 'inherit', borderRadius: 6, cursor: 'pointer' }}>
+                  changer
+                </button>
+              )}
+            </div>
+            {!flashPseudo ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  value={flashPseudoEdit}
+                  onChange={function(e) { setFlashPseudoEdit(e.target.value) }}
+                  onKeyDown={function(e) {
+                    if (e.key === 'Enter') {
+                      var v = flashPseudoEdit.trim()
+                      if (v) { localStorage.setItem('zf-flash-pseudo', v); setFlashPseudo(v) }
+                    }
+                  }}
+                  placeholder="Choisis un pseudo pour participer"
+                  style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(127,127,127,0.4)', background: 'rgba(0,0,0,0.15)', color: 'inherit' }}
+                />
+                <button
+                  onClick={function() {
+                    var v = flashPseudoEdit.trim()
+                    if (v) { localStorage.setItem('zf-flash-pseudo', v); setFlashPseudo(v) }
+                  }}
+                  style={{ padding: '8px 18px', borderRadius: 8, background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                  Entrer
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ maxHeight: 180, overflowY: 'auto', background: 'rgba(0,0,0,0.15)', borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 14 }}>
+                  {flashMsgs.length === 0
+                    ? <div style={{ opacity: 0.5, textAlign: 'center', padding: '8px 0' }}>Aucun message — sois le premier !</div>
+                    : flashMsgs.map(function(m) { return (
+                        <div key={m.timestamp + '-' + m.pseudo} style={{ marginBottom: 4, wordBreak: 'break-word' }}>
+                          <strong style={{ color: '#a5b4fc' }}>{m.pseudo}:</strong> {m.text}
+                        </div>
+                      )})
+                  }
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    value={flashInput}
+                    onChange={function(e) { setFlashInput(e.target.value) }}
+                    onKeyDown={function(e) { if (e.key === 'Enter') sendFlashMessage() }}
+                    placeholder={'Message en tant que ' + flashPseudo}
+                    style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(127,127,127,0.4)', background: 'rgba(0,0,0,0.15)', color: 'inherit' }}
+                  />
+                  <button
+                    onClick={sendFlashMessage}
+                    style={{ padding: '8px 18px', borderRadius: 8, background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                    Envoyer
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="hero">
             <div className="badge">Décentralisé • Libre • Privé</div>
             <h1><span>Zone Free</span></h1>
