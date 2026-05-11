@@ -3,7 +3,7 @@ ipfs init --profile=server
 ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
 ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
 ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001","/ip6/::/tcp/4001","/ip4/0.0.0.0/udp/4001/quic-v1","/ip6/::/udp/4001/quic-v1"]'
-ipfs config --json Addresses.Announce '["/dns4/zonefreipfs.app.runonflux.io/tcp/4001/tcp/4001"]'
+ipfs config --json Addresses.Announce '["/dns4/zonefreipfs.app.runonflux.io/tcp/4001"]'
 ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
 
 mkdir -p /tmp/site
