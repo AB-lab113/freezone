@@ -1,10 +1,11 @@
 #!/bin/sh
+export IPFS_PATH=/data/ipfs
 ipfs init --profile=server || true
-ipfs --repo-dir /data/ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001","/ip6/::/tcp/4001","/ip4/0.0.0.0/udp/4001/quic-v1","/ip6/::/udp/4001/quic-v1"]'
-ipfs --repo-dir /data/ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
-ipfs --repo-dir /data/ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-ipfs --repo-dir /data/ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
-ipfs --repo-dir /data/ipfs config --json Addresses.Announce '["/dns4/zonefreipfs.app.runonflux.io/tcp/4001"]'
+ipfs config --json Addresses.Swarm '["/ip4/0.0.0.0/tcp/4001","/ip6/::/tcp/4001","/ip4/0.0.0.0/udp/4001/quic-v1","/ip6/::/udp/4001/quic-v1"]'
+ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["*"]'
+ipfs config --json Addresses.Announce '["/dns4/zonefreipfs.app.runonflux.io/tcp/4001"]'
 
 mkdir -p /tmp/site
 echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=https://zonefreeweb.app.runonflux.io"><title>ZoneFree</title></head><body><a href="https://zonefreeweb.app.runonflux.io">Redirecting...</a></body></html>' > /tmp/site/index.html
